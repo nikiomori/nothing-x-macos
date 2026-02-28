@@ -49,13 +49,24 @@ class NothingServiceImpl : NothingService {
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CONNECTED.rawValue), object: nil, queue: .main) { notification in
             // Handle the notification here
             if let device = notification.object as? BluetoothDeviceEntity {
-                
-                    
+
                     self.nothingDevice = NothingDeviceFDTO(bluetoothDetails: device)
+
+                    // Restore codename and name from saved configuration if available
+                    let savedDevices = NothingRepositoryImpl.shared.getSaved()
+                    if let saved = savedDevices.first(where: { $0.bluetoothDetails.mac == device.mac }) {
+                        if saved.codename != .UNKNOWN {
+                            self.nothingDevice?.codename = saved.codename
+                        }
+                        if !saved.name.isEmpty {
+                            self.nothingDevice?.name = saved.name
+                        }
+                    }
+
                     print("Nothing Device object has been created \(self.nothingDevice?.name)")
-                    
+
                     NotificationCenter.default.post(name: Notification.Name(DataNotifications.CONNECTED.rawValue), object: self.nothingDevice)
-                
+
             }
         }
      
@@ -707,26 +718,29 @@ class NothingServiceImpl : NothingService {
         switch command {
             
         case Commands.READ_FIRMWARE.rawValue:
-       
+
             let firmware = readFirmware(hexArray: rawData)
             nothingDevice?.firmware = firmware
             if (nothingDevice?.sku == SKU.UNKNOWN) {
-                nothingDevice?.sku = skuFromFirmware(firmware: firmware)
-                guard let sku = nothingDevice?.sku else {
-                    return
+                let detectedSku = skuFromFirmware(firmware: firmware)
+                if detectedSku != .UNKNOWN {
+                    nothingDevice?.sku = detectedSku
+                    nothingDevice?.codename = codenameFromSKU(sku: detectedSku)
                 }
-                nothingDevice?.codename = codenameFromSKU(sku: sku)
             }
             
         case Commands.READ_SERIAL_NUMBER.rawValue:
-            
+
             let serial = readSerial(hexPayload: rawData)
             if (!serial.isEmpty) {
                 nothingDevice?.serial = serial
-                nothingDevice?.sku = skuFromSerial(serial: serial)
-        
+                let sku = skuFromSerial(serial: serial)
+                if sku != .UNKNOWN {
+                    nothingDevice?.sku = sku
+                    nothingDevice?.codename = codenameFromSKU(sku: sku)
+                }
             }
-            
+
         case Commands.READ_ANC_ONE.rawValue:
             
             readANC(hexArray: rawData)

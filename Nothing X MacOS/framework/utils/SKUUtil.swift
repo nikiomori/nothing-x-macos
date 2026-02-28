@@ -86,6 +86,36 @@ func codenameFromSKU(sku: SKU) -> Codenames {
         return .ESPEON
     case .FLAFFY_WHITE:
         return .FLAFFY
+    case .CROBAT_ORANGE:
+        return .CROBAT
+    case .CROBAT_WHITE:
+        return .CROBAT
+    case .CROBAT_BLACK_1:
+        return .CROBAT
+    case .CROBAT_BLACK_2:
+        return .CROBAT
+    case .CROBAT_WHITE_2:
+        return .CROBAT
+    case .CROBAT_ORANGE_2:
+        return .CROBAT
+    case .CLEFFA_BLACK_1:
+        return .CLEFFA
+    case .CLEFFA_WHITE_1:
+        return .CLEFFA
+    case .CLEFFA_YELLOW_1:
+        return .CLEFFA
+    case .CLEFFA_BLACK_2:
+        return .CLEFFA
+    case .CLEFFA_WHITE_2:
+        return .CLEFFA
+    case .CLEFFA_YELLOW_2:
+        return .CLEFFA
+    case .CLEFFA_BLACK_3:
+        return .CLEFFA
+    case .CLEFFA_WHITE_3:
+        return .CLEFFA
+    case .CLEFFA_YELLOW_3:
+        return .CLEFFA
     default:
         return .UNKNOWN
     }
@@ -124,10 +154,30 @@ func skuFromSerial(serial: String) -> SKU {
             return SKU.FLAFFY_WHITE
         }
     } else if headSerial == "SH" || headSerial == "13" {
-        return SKU(rawValue: String(serial.prefix(6).suffix(2)))! // Get characters at index 4 and 5
+        if let sku = SKU(rawValue: String(serial.prefix(6).suffix(2))) {
+            return sku
+        }
     }
     
     return SKU.UNKNOWN
 }
 
-
+func codenameFromDeviceName(name: String) -> Codenames {
+    let lowered = name.lowercased()
+    if lowered.contains("ear (1)") {
+        return .ONE
+    } else if lowered.contains("ear stick") {
+        return .STICKS
+    } else if lowered.contains("ear (2s)") {
+        return .CLEFFA
+    } else if lowered.contains("ear (2)") {
+        return .TWO
+    } else if lowered.contains("ear (a)") {
+        return .CORSOLA
+    } else if lowered.contains("ear (3)") {
+        return .EAR3
+    } else if lowered.contains("ear (open)") {
+        return .FLAFFY
+    }
+    return .UNKNOWN
+}

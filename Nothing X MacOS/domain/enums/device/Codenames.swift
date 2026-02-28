@@ -16,4 +16,6 @@ enum Codenames : String, Codable {
     case DONPHAN = "B168"
     case FLAFFY = "B174"
     case CLEFFA = "B162"
+    case CROBAT = "B164"
+    case EAR3 = "B173"
 }

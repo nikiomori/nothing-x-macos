@@ -8,19 +8,20 @@
 import SwiftUI
 
 struct DeviceNameDotTextView: View {
+    @EnvironmentObject var mainViewModel: MainViewViewModel
+
     var body: some View {
         VStack {
             Spacer(minLength: 4)
-            //ear (1)
-            Text("ear (1)")
+            Text(mainViewModel.nothingDevice?.name ?? "ear (1)")
                 .font(.custom("5by7", size: 20)).foregroundColor(Color(#colorLiteral(red: 0.8039215803, green: 0.8039215803, blue: 0.8039215803, alpha: 1)))
                 .rotationEffect(.degrees(-90))
                 .padding()
                 .fixedSize()
-                .frame(width: 14, height: 66)
-            
-            Spacer(minLength: 150)
-                
+                .frame(width: 14, height: 150)
+
+            Spacer(minLength: 66)
+
         }.padding(.horizontal, 8)
     }
 }
@@ -28,5 +29,6 @@ struct DeviceNameDotTextView: View {
 struct DeviceNameDotTextView_Previews: PreviewProvider {
     static var previews: some View {
         DeviceNameDotTextView()
+            .environmentObject(MainViewViewModel(bluetoothService: BluetoothServiceImpl(), nothingRepository: NothingRepositoryImpl.shared, nothingService: NothingServiceImpl.shared))
     }
 }

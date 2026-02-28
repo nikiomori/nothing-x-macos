@@ -91,6 +91,7 @@ class NothingDeviceFDTO: ObservableObject {
      
     init(bluetoothDetails: BluetoothDeviceEntity) {
         self.bluetoothDetails = bluetoothDetails
+        self.name = bluetoothDetails.name
     }
     
     private func notifyDataUpdated() {
