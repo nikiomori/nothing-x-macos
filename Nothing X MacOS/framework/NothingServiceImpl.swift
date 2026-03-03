@@ -153,7 +153,8 @@ class NothingServiceImpl : NothingService {
     // MARK: - Enhanced Bass
 
     func switchEnhancedBass(enabled: Bool, level: Int) {
-        let payload: [UInt8] = [enabled ? 0x01 : 0x00, UInt8(level * 2)]
+        let clampedLevel = min(max(level * 2, 0), 255)
+        let payload: [UInt8] = [enabled ? 0x01 : 0x00, UInt8(clampedLevel)]
 
         addRequest(command: Commands.SET_ENHANCED_BASS, operationID: Commands.SET_ENHANCED_BASS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
             switch result {
@@ -572,7 +573,7 @@ class NothingServiceImpl : NothingService {
         header[3] = commandBytes[0]
         header[4] = commandBytes[1]
         
-        let payloadLength = UInt8(payload.count)
+        let payloadLength = UInt8(clamping: payload.count)
         header[5] = payloadLength
         
         // Append payload to header
@@ -679,14 +680,13 @@ class NothingServiceImpl : NothingService {
     }
 
     private func readBattery(hexString: [UInt8]) {
-        
-        var connectedDevices = 0
-        
+
         let BATTERY_MASK: UInt8 = 127
         let RECHARGING_MASK: UInt8 = 128
-        
+
         // Read the number of connected devices
-        connectedDevices = Int(hexString[8])
+        guard hexString.count > 8 else { return }
+        let connectedDevices = Int(hexString[8])
         
         nothingDevice?.isCaseConnected = false
         nothingDevice?.isLeftConnected = false
@@ -694,8 +694,11 @@ class NothingServiceImpl : NothingService {
         
         // Process each connected device
         for i in 0..<connectedDevices {
-            let deviceId = hexString[9 + (i * 2)]
-            let batteryData = hexString[10 + (i * 2)]
+            let deviceIdIndex = 9 + (i * 2)
+            let batteryDataIndex = 10 + (i * 2)
+            guard batteryDataIndex < hexString.count else { break }
+            let deviceId = hexString[deviceIdIndex]
+            let batteryData = hexString[batteryDataIndex]
             let batteryLevel = Int(batteryData & BATTERY_MASK)
             let isCharging = (batteryData & RECHARGING_MASK) == RECHARGING_MASK
             
@@ -722,19 +725,20 @@ class NothingServiceImpl : NothingService {
     }
     
     private func readGestures(hexArray: [UInt8]) -> [(deviceType: DeviceType, gestureType: GestureType, action: UInt8)] {
+        guard hexArray.count > 8 else { return [] }
         let gestureCount: UInt8 = hexArray[8]
-        
+
         var array: [(deviceType: DeviceType, gestureType: GestureType, action: UInt8)] = []
-        
+
         for i in 0..<gestureCount { // Loop from 0 to gestureCount - 1
-            
+            let actionIndex = 12 + Int(i) * 4
+            guard actionIndex < hexArray.count else { break }
+
             let device = DeviceType(rawValue: hexArray[9 + Int(i) * 4]) // Assign values from hexString to the dictionary
-            
-            let _ = hexArray[10 + Int(i) * 4]
             let gesture = GestureType(rawValue: hexArray[11 + Int(i) * 4])
-            
+
             if let device = device, let gesture = gesture {
-                array.append((deviceType: device, gestureType: gesture, action: hexArray[12 + Int(i) * 4]))
+                array.append((deviceType: device, gestureType: gesture, action: hexArray[actionIndex]))
             }
             
         }
@@ -748,7 +752,7 @@ class NothingServiceImpl : NothingService {
     }
     
     private func readANC(hexArray: [UInt8]) {
-        
+        guard hexArray.count > 9 else { return }
         let ancStatus = hexArray[9]
         let level = ANC(rawValue: ancStatus)
         guard let unwrappedLevel = level else {
@@ -764,7 +768,7 @@ class NothingServiceImpl : NothingService {
     }
     
     private func readEQ(hexArray: [UInt8]) -> EQProfiles {
-        
+        guard hexArray.count > 8 else { return .BALANCED }
 
         let eqMode: UInt8 = hexArray[8]
         log.debug("EQ mode: \(eqMode)")
@@ -838,11 +842,13 @@ class NothingServiceImpl : NothingService {
     
     private func readLatencyMode(hexArray: [UInt8]) -> Bool {
         log.debug("Reading latency mode")
+        guard hexArray.count > 8 else { return false }
         return (hexArray[8] != 0)
     }
-    
+
     private func readInEarDetection(hexArray: [UInt8]) -> Bool {
         log.debug("Reading in-ear detection")
+        guard hexArray.count > 10 else { return false }
         return (hexArray[10] != 0)
     }
 

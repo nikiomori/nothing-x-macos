@@ -34,6 +34,10 @@ extension NothingDeviceDTO {
             tripleTapGestureActionRight: .NO_EXTRA_ACTION,
             tapAndHoldGestureActionLeft: .NO_EXTRA_ACTION,
             tapAndHoldGestureActionRight: .NO_EXTRA_ACTION,
+            isAdvancedEQEnabled: self.cachedIsAdvancedEQEnabled ?? false,
+            customEQBass: self.cachedCustomEQBass ?? 0.0,
+            customEQMid: self.cachedCustomEQMid ?? 0.0,
+            customEQTreble: self.cachedCustomEQTreble ?? 0.0,
             lastConnected: self.lastConnected
         )
     }

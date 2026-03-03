@@ -22,40 +22,39 @@ class ConnectViewViewModel : ObservableObject {
     @Published var isBluetoothOn = false
     
     
+    private var observers: [NSObjectProtocol] = []
+
     init(nothingRepository: NothingRepository, nothingService: NothingService, bluetoothService: BluetoothService) {
-        
+
         self.nothingRepository = nothingRepository
         self.nothingService = nothingService
         self.isBluetoothOnUseCase = IsBluetoothOnUseCase(bluetoothService: bluetoothService)
-        
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
-            
-            self.isLoading = false
-            
-        }
-        
-        
-        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil, queue: .main) {
-            notification in
-            
-            
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            self?.isLoading = false
+        })
+
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             withAnimation {
                 self.isFailedToConnectPresented = true
                 self.isLoading = false
             }
-            
-        }
-        
-        NotificationCenter.default.addObserver(forName: Notification.Name(Notifications.REQUEST_RETRY.rawValue), object: nil, queue: .main) {
-            notification in
-            
+        })
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(Notifications.REQUEST_RETRY.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             self.connect()
             withAnimation {
                 self.isFailedToConnectPresented = false
             }
-            
-        }
-        
+        })
+
+    }
+
+    deinit {
+        observers.forEach { NotificationCenter.default.removeObserver($0) }
     }
     
     func checkBluetoothStatus() {

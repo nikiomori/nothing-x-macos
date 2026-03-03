@@ -127,8 +127,8 @@ func codenameFromSKU(sku: SKU) -> Codenames {
 
 
 func skuFromFirmware(firmware: String) -> SKU {
-    
-    if (firmware.split(separator: ".")[1] == "6700") {
+    let parts = firmware.split(separator: ".")
+    if parts.count > 1 && parts[1] == "6700" {
         return SKU.EAR_1_WHITE
     }
 

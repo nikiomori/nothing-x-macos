@@ -27,10 +27,13 @@ class EarTipTestViewModel: ObservableObject {
     @Published var leftResult: EarTipResult = .unknown
     @Published var rightResult: EarTipResult = .unknown
 
+    private var observer: NSObjectProtocol?
+
     init(nothingService: NothingService) {
         self.nothingService = nothingService
 
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.EAR_TIP_TEST_RESULT.rawValue), object: nil, queue: .main) { notification in
+        observer = NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.EAR_TIP_TEST_RESULT.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             if let userInfo = notification.userInfo,
                let left = userInfo["left"] as? UInt8,
                let right = userInfo["right"] as? UInt8 {
@@ -40,6 +43,10 @@ class EarTipTestViewModel: ObservableObject {
                 self.state = .completed
             }
         }
+    }
+
+    deinit {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
     func startTest() {

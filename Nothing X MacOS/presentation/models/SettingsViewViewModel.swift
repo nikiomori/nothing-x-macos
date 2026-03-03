@@ -35,8 +35,10 @@ class SettingsViewViewModel : ObservableObject {
     @Published var supportsCaseLED = false
 
     @Published var nothingDevice: NothingDeviceEntity?
-    
-    
+
+    private var observer: NSObjectProtocol?
+
+
     init(nothingService: NothingService, nothingRepository: NothingRepository) {
         self.nothingService = nothingService
         self.switchLatencyUseCase = SwitchLatencyUseCase(nothingService: nothingService)
@@ -46,8 +48,8 @@ class SettingsViewViewModel : ObservableObject {
         self.isNothingConnectedUseCase = IsNothingConnectedUseCase(nothingService: nothingService)
 
 
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
-
+        observer = NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
 
             if let device = notification.object as? NothingDeviceEntity {
 
@@ -105,8 +107,12 @@ class SettingsViewViewModel : ObservableObject {
 
     func forgetDevice() {
         let devices = getSavedDevicesUseCase.getSaved()
-        deleteSavedDeviceUseCase.delete(device: devices[0])
+        guard let first = devices.first else { return }
+        deleteSavedDeviceUseCase.delete(device: first)
     }
 
+    deinit {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
 
 }

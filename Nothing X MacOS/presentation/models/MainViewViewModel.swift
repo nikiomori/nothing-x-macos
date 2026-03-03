@@ -36,20 +36,20 @@ class MainViewViewModel : ObservableObject {
     @Published var rightDoubleTapAction: DoubleTapGestureActions = .PLAY_PAUSE
     @Published var leftDoubleTapAndHoldAction: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION
     @Published var rightDoubleTapAndHoldAction: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION
-    
-    
-    
+
+    private var observers: [NSObjectProtocol] = []
+
+
     init(bluetoothService: BluetoothService, nothingRepository: NothingRepository, nothingService: NothingService) {
-        
+
         self.bluetoothService = bluetoothService
         self.nothingRepository = nothingRepository
         self.fetchDataUseCase = FetchDataUseCase(service: nothingService)
         self.disconnectDeviceUseCase = DisconnectDeviceUseCase(nothingService: nothingService)
         self.getSavedDevicesUseCase = GetSavedDevicesUseCase(nothingRepository: nothingRepository)
- 
-        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) {
-            notification in
-                        
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             self.leftBattery = nil
             self.rightBattery = nil
 
@@ -61,29 +61,26 @@ class MainViewViewModel : ObservableObject {
                     self.navigationPath.append(Destination.connect)
                 }
             }
-  
-        }
-        
-        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) {
-            notification in
-            
+        })
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             self.fetchDataUseCase.fetchData()
             self.navigationPath = NavigationPath()
             self.navigationPath.append(Destination.home)
-        }
-        
-        
-        NotificationCenter.default.addObserver(forName: Notification.Name(RepositoryNotifications.CONFIGURATION_DELETED.rawValue), object: nil, queue: .main) {
-            notification in
-            
+        })
+
+
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(RepositoryNotifications.CONFIGURATION_DELETED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             self.disconnectDeviceUseCase.disconnectDevice()
 
             self.navigationPath = NavigationPath()
             self.navigationPath.append(Destination.discover)
-        }
+        })
 
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
-            
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
 #warning("if there is a device currently connected and you are trying to connect or discover another device at some point it might just snap to home screen")
 //            if self.currentDestination == .connect || self.currentDestination == .discover {
 //                self.currentDestination = .home
@@ -101,15 +98,15 @@ class MainViewViewModel : ObservableObject {
                     self.leftDoubleTapAndHoldAction = device.doubleTapAndHoldGestureActionLeft
                     self.rightDoubleTapAndHoldAction = device.doubleTapAndHoldGestureActionRight
                 }
-                
+
                 self.jsonEncoder.addOrUpdateDevice(device.toDTO())
-                
+
                 self.rightBattery = Double(device.rightBattery)
                 self.leftBattery = Double(device.leftBattery)
             }
-        }
-        
-    
+        })
+
+
         // Check Bluetooth status and set the destination accordingly
         if !bluetoothService.isBluetoothOn() || !bluetoothService.isDeviceConnected() {
             let devices = nothingRepository.getSaved()
@@ -119,8 +116,12 @@ class MainViewViewModel : ObservableObject {
                 navigationPath.append(Destination.connect)
             }
         }
-        
-        
+
+
+    }
+
+    deinit {
+        observers.forEach { NotificationCenter.default.removeObserver($0) }
     }
     
     func navigateToBluetoothIsOff() {

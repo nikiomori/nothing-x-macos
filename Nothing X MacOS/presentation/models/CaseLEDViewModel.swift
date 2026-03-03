@@ -14,10 +14,13 @@ class CaseLEDViewModel: ObservableObject {
 
     @Published var colors: [Color] = Array(repeating: .red, count: 5)
 
+    private var observer: NSObjectProtocol?
+
     init(nothingService: NothingService) {
         self.nothingService = nothingService
 
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
+        observer = NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
             if let device = notification.object as? NothingDeviceEntity {
                 self.colors = device.caseLEDColors.map { rgb in
                     guard rgb.count >= 3 else { return Color.red }
@@ -29,6 +32,10 @@ class CaseLEDViewModel: ObservableObject {
                 }
             }
         }
+    }
+
+    deinit {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
     }
 
     func applyColors() {

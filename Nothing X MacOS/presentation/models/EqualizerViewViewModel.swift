@@ -7,7 +7,6 @@
 
 import Foundation
 import SwiftUI
-import Combine
 
 class EqualizerViewViewModel : ObservableObject {
 
@@ -40,6 +39,7 @@ class EqualizerViewViewModel : ObservableObject {
 
     private var debounceTimer: Timer?
     private let presetStorage = EQPresetStorage.shared
+    private var observer: NSObjectProtocol?
 
     init(nothingService: NothingService) {
 
@@ -49,7 +49,8 @@ class EqualizerViewViewModel : ObservableObject {
 
         savedPresets = presetStorage.getAll()
 
-        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
+        observer = NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
 
             if let device = notification.object as? NothingDeviceEntity {
 
@@ -75,6 +76,11 @@ class EqualizerViewViewModel : ObservableObject {
         }
     }
 
+    deinit {
+        if let observer { NotificationCenter.default.removeObserver(observer) }
+        debounceTimer?.invalidate()
+    }
+
 
 
     func switchEQ(eq: EQProfiles) {
@@ -95,7 +101,8 @@ class EqualizerViewViewModel : ObservableObject {
 
     func sendCustomEQ() {
         debounceTimer?.invalidate()
-        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
+        debounceTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { [weak self] _ in
+            guard let self else { return }
             self.nothingService.switchCustomEQ(
                 bass: Float(self.customBass),
                 mid: Float(self.customMid),
