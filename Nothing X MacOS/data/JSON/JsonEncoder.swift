@@ -13,9 +13,11 @@ class JsonEncoder {
     private let log = NXLogger(category: .persistence)
     private let fileName: String
     private var devices: [String: NothingDeviceDTO] = [:]
+    private var saveWorkItem: DispatchWorkItem?
+    private let saveDebounceInterval: TimeInterval = 0.5
 
     static let shared = JsonEncoder(fileName: "configurations")
-    
+
     private init(fileName: String) {
         self.fileName = fileName
         loadDevices()
@@ -58,13 +60,22 @@ class JsonEncoder {
         }
     }
     
-    // Save devices to the JSON file
-    private func saveDevices() {
+    // Save devices to the JSON file (debounced)
+    private func scheduleSave() {
+        saveWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.saveDevicesNow()
+        }
+        saveWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + saveDebounceInterval, execute: workItem)
+    }
+
+    private func saveDevicesNow() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = .prettyPrinted
-        
+
         do {
-            let jsonData = try encoder.encode(Array(devices.values)) // Encode values of the hashmap
+            let jsonData = try encoder.encode(Array(devices.values))
             let fileURL = getFileURL()
             try jsonData.write(to: fileURL)
             log.debug("Devices saved")
@@ -72,17 +83,17 @@ class JsonEncoder {
             log.error("Error saving devices: \(error)")
         }
     }
-    
+
     // Add or update a device
     func addOrUpdateDevice(_ device: NothingDeviceDTO) {
-        devices[device.bluetoothDetails.mac] = device // Add or update the device
-        saveDevices()
+        devices[device.bluetoothDetails.mac] = device
+        scheduleSave()
     }
     
     // Delete a device by MAC address
     func deleteDevice(mac: String) {
-        devices.removeValue(forKey: mac) // Remove the device from the hashmap
-        saveDevices()
+        devices.removeValue(forKey: mac)
+        saveDevicesNow()
     }
     
     // Retrieve all devices

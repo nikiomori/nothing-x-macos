@@ -28,7 +28,7 @@ struct ModalSheetView : View {
                     
                     VStack {
                         
-                        if var title = title {
+                        if let title = title {
                             Text(title)
                                 .font(.custom("NDOT45inspiredbyNOTHING", size: 9))
                                 .foregroundColor(Color(#colorLiteral(red: 1, green: 1, blue: 1, alpha: 0.8)))
@@ -37,7 +37,7 @@ struct ModalSheetView : View {
                                 .padding(.bottom, 12)
                         }
                         
-                        if var text = text {
+                        if let text = text {
                             Text(text)
                                 .lineLimit(2)
                                 .font(.system(size: 10, weight: .light))
@@ -49,7 +49,7 @@ struct ModalSheetView : View {
                     }
                     .padding(.horizontal, 18)
                     
-                    if var topButtonText = topButtonText {
+                    if let topButtonText = topButtonText {
                         Button(topButtonText) {
                             action()
                         }
@@ -59,7 +59,7 @@ struct ModalSheetView : View {
                         
                     }
                     
-                    if var bottomButtonText = bottomButtonText {
+                    if let bottomButtonText = bottomButtonText {
                         Button(bottomButtonText) {
                             withAnimation {
                                 isPresented = false

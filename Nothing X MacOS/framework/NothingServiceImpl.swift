@@ -75,11 +75,8 @@ class NothingServiceImpl : NothingService {
         NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.DATA_RECEIVED.rawValue), object: nil, queue: .main) { notification in
             // Handle the notification here
             if let userInfo = notification.userInfo, let data = userInfo["data"] as? [UInt8] {
-                if let userInfo = notification.userInfo, let data = userInfo["data"] as? [UInt8] {
-                    self.log.debug("Data received: \(data)")
-                    
-                    self.onDataReceived(rawData: data)
-                }
+                self.log.debug("Data received: \(data)")
+                self.onDataReceived(rawData: data)
             }
         }
         
@@ -273,99 +270,102 @@ class NothingServiceImpl : NothingService {
         log.debug("Connected: \(isNothingConnected()), device exists: \(nothingDevice != nil)")
         
         if isNothingConnected() && nothingDevice != nil {
-            
+
             log.debug("Adding fetch requests to queue")
-            
-            
-            addRequest(command: Commands.GET_SERIAL_NUMBER, operationID: Commands.GET_SERIAL_NUMBER.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched serial number")
-                case .failure(let error):
-                    self.log.error("Failed to fetch serial number: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_FIRMWARE, operationID: Commands.GET_FIRMWARE.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched firmware")
-                case .failure(let error):
-                    self.log.error("Failed to fetch firmware: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_BATTERY, operationID: Commands.GET_BATTERY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched battery settings")
-                case .failure(let error):
-                    self.log.error("Failed to fetch battery: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_ANC, operationID: Commands.GET_ANC.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched ANC settings")
-                case .failure(let error):
-                    self.log.error("Failed to fetch ANC: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_EQ, operationID: Commands.GET_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched EQ settings")
-                case .failure(let error):
-                    self.log.error("Failed to fetch EQ: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_LATENCY, operationID: Commands.GET_LATENCY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched latency settings")
-                case .failure(let error):
-                    self.log.error("Failed to fetch latency: \(error.localizedDescription)")
 
+            // Small delay to let the device settle after RFCOMM connection
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.3) {
+
+                self.addRequest(command: Commands.GET_FIRMWARE, operationID: Commands.GET_FIRMWARE.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched firmware")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch firmware: \(error.localizedDescription)")
+
+                    }
                 }
+
+                self.addRequest(command: Commands.GET_BATTERY, operationID: Commands.GET_BATTERY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched battery settings")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch battery: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_ANC, operationID: Commands.GET_ANC.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched ANC settings")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch ANC: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_EQ, operationID: Commands.GET_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched EQ settings")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch EQ: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_LATENCY, operationID: Commands.GET_LATENCY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched latency settings")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch latency: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_IN_EAR_STATUS, operationID: Commands.GET_IN_EAR_STATUS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched in-ear status")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch in-ear status: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_GESTURES, operationID: Commands.GET_GESTURES.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched gestures")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch gestures: \(error.localizedDescription)")
+
+                    }
+                }
+
+                self.addRequest(command: Commands.GET_SERIAL_NUMBER, operationID: Commands.GET_SERIAL_NUMBER.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
+                    result in
+                    switch result {
+                    case .success:
+                        self.log.info("Fetched serial number")
+                    case .failure(let error):
+                        self.log.error("Failed to fetch serial number: \(error.localizedDescription)")
+
+                    }
+                }
+
             }
 
-            addRequest(command: Commands.GET_IN_EAR_STATUS, operationID: Commands.GET_IN_EAR_STATUS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched in-ear status")
-                case .failure(let error):
-                    self.log.error("Failed to fetch in-ear status: \(error.localizedDescription)")
-                    
-                }
-            }
-            
-            addRequest(command: Commands.GET_GESTURES, operationID: Commands.GET_GESTURES.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
-                result in
-                switch result {
-                case .success:
-                    self.log.info("Fetched gestures")
-                case .failure(let error):
-                    self.log.error("Failed to fetch gestures: \(error.localizedDescription)")
-                    
-                }
-            }
-
-            
         }
         
     }
@@ -538,7 +538,7 @@ class NothingServiceImpl : NothingService {
             
             let device = DeviceType(rawValue: hexArray[9 + Int(i) * 4]) // Assign values from hexString to the dictionary
             
-            let common = hexArray[10 + Int(i) * 4]
+            let _ = hexArray[10 + Int(i) * 4]
             let gesture = GestureType(rawValue: hexArray[11 + Int(i) * 4])
             
             if let device = device, let gesture = gesture {
