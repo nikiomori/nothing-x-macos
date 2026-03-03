@@ -8,15 +8,16 @@ import SwiftUI
 import Foundation
 
 class ConnectViewViewModel : ObservableObject {
-    
-    
+
+
     private let nothingRepository: NothingRepository
     private let nothingService: NothingService
-    
+
     @Published var isLoading = false
     @Published var isFailedToConnectPresented = false
     @Published var retry = false
-    
+    @Published var savedDevices: [NothingDeviceEntity] = []
+
     private let isBluetoothOnUseCase: IsBluetoothOnUseCaseProtocol
     @Published var isBluetoothOn = false
     
@@ -61,21 +62,32 @@ class ConnectViewViewModel : ObservableObject {
         isBluetoothOn = isBluetoothOnUseCase.isBluetoothOn()
     }
     
+    func loadSavedDevices() {
+        savedDevices = nothingRepository.getSaved()
+    }
+
     func connect() {
         isLoading = true
         let devices = nothingRepository.getSaved()
-        
+        guard !devices.isEmpty else {
+            isLoading = false
+            return
+        }
         nothingService.connectToNothing(device: devices[0].bluetoothDetails)
     }
-    
-    
+
+    func connect(device: NothingDeviceEntity) {
+        isLoading = true
+        nothingService.connectToNothing(device: device.bluetoothDetails)
+    }
+
     func retryConnect() {
         connect()
         retry = false
         withAnimation {
             isFailedToConnectPresented = false
         }
-        
+
     }
     
 }

@@ -34,8 +34,20 @@ extension NothingDeviceFDTO {
             tripleTapGestureActionLeft: framework.tripleTapGestureActionLeft,
             tripleTapGestureActionRight: framework.tripleTapGestureActionRight,
             tapAndHoldGestureActionLeft: framework.tapAndHoldGestureActionLeft,
-            tapAndHoldGestureActionRight: framework.tapAndHoldGestureActionRight
-            
+            tapAndHoldGestureActionRight: framework.tapAndHoldGestureActionRight,
+            doubleTapGestureActionLeft: framework.doubleTapGestureActionLeft,
+            doubleTapGestureActionRight: framework.doubleTapGestureActionRight,
+            doubleTapAndHoldGestureActionLeft: framework.doubleTapAndHoldGestureActionLeft,
+            doubleTapAndHoldGestureActionRight: framework.doubleTapAndHoldGestureActionRight,
+            isAdvancedEQEnabled: framework.isAdvancedEQEnabled,
+            customEQBass: framework.customEQBass,
+            customEQMid: framework.customEQMid,
+            customEQTreble: framework.customEQTreble,
+            isEnhancedBassEnabled: framework.isEnhancedBassEnabled,
+            enhancedBassLevel: framework.enhancedBassLevel,
+            isPersonalizedANCEnabled: framework.isPersonalizedANCEnabled,
+            caseLEDColors: framework.caseLEDColors,
+            lastConnected: framework.lastConnected
         )
     }
 }
@@ -62,6 +74,19 @@ extension NothingDeviceEntity {
         framework.listeningMode = device.listeningMode
         framework.isLowLatencyOn = device.isLowLatencyOn
         framework.isInEarDetectionOn = device.isInEarDetectionOn
+        framework.doubleTapGestureActionLeft = device.doubleTapGestureActionLeft
+        framework.doubleTapGestureActionRight = device.doubleTapGestureActionRight
+        framework.doubleTapAndHoldGestureActionLeft = device.doubleTapAndHoldGestureActionLeft
+        framework.doubleTapAndHoldGestureActionRight = device.doubleTapAndHoldGestureActionRight
+        framework.isAdvancedEQEnabled = device.isAdvancedEQEnabled
+        framework.customEQBass = device.customEQBass
+        framework.customEQMid = device.customEQMid
+        framework.customEQTreble = device.customEQTreble
+        framework.isEnhancedBassEnabled = device.isEnhancedBassEnabled
+        framework.enhancedBassLevel = device.enhancedBassLevel
+        framework.isPersonalizedANCEnabled = device.isPersonalizedANCEnabled
+        framework.caseLEDColors = device.caseLEDColors
+        framework.lastConnected = device.lastConnected
         return framework
     }
 }

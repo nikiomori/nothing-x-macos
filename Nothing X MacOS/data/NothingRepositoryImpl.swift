@@ -19,7 +19,10 @@ class NothingRepositoryImpl : NothingRepository {
     
     
     func getSaved() -> [NothingDeviceEntity] {
-        encoder.getAllDevices().toEntities()
+        let entities = encoder.getAllDevices().toEntities()
+        return Array(entities.sorted {
+            ($0.lastConnected ?? .distantPast) > ($1.lastConnected ?? .distantPast)
+        }.prefix(5))
     }
     
     func save(device: NothingDeviceEntity) {

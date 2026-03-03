@@ -9,7 +9,7 @@ import Foundation
 
 extension NothingDeviceDTO {
     func toEntity() -> NothingDeviceEntity {
-        
+
         return NothingDeviceEntity(
             name: self.name,
             serial: self.serial,
@@ -29,12 +29,12 @@ extension NothingDeviceDTO {
             listeningMode: .BALANCED,
             isLowLatencyOn: false,
             isInEarDetectionOn: false,
-            bluetoothDetails: self.bluetoothDetails.toEntity(), // Assuming a similar mapping exists for BluetoothDeviceDTO
+            bluetoothDetails: self.bluetoothDetails.toEntity(),
             tripleTapGestureActionLeft: .NO_EXTRA_ACTION,
             tripleTapGestureActionRight: .NO_EXTRA_ACTION,
             tapAndHoldGestureActionLeft: .NO_EXTRA_ACTION,
-            tapAndHoldGestureActionRight: .NO_EXTRA_ACTION
-        
+            tapAndHoldGestureActionRight: .NO_EXTRA_ACTION,
+            lastConnected: self.lastConnected
         )
     }
 }
@@ -47,7 +47,12 @@ extension NothingDeviceEntity {
             codename: self.codename,
             sku: self.sku,
             bluetoothDetails: self.bluetoothDetails.toDTO(),
-            firmware: self.firmware
+            firmware: self.firmware,
+            lastConnected: self.lastConnected,
+            cachedCustomEQBass: self.customEQBass,
+            cachedCustomEQMid: self.customEQMid,
+            cachedCustomEQTreble: self.customEQTreble,
+            cachedIsAdvancedEQEnabled: self.isAdvancedEQEnabled
         )
     }
 }

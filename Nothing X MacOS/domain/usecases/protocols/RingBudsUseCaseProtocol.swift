@@ -9,7 +9,9 @@ import Foundation
 
 
 protocol RingBudsUseCaseProtocol {
-    
+
     func ringBuds()
-    
+
+    func ringBud(device: DeviceType)
+
 }

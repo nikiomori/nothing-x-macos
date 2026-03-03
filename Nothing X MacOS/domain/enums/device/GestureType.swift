@@ -8,7 +8,8 @@
 import Foundation
 
 enum GestureType : UInt8 {
-    
-    case TAP_AND_HOLD = 7
+    case DOUBLE_TAP = 2
     case TRIPLE_TAP = 3
+    case TAP_AND_HOLD = 7
+    case DOUBLE_TAP_AND_HOLD = 9
 }

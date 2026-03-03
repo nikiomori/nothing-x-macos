@@ -6,10 +6,11 @@
 //
 
 enum EQProfiles : UInt8, Codable {
-    
+
     case BALANCED = 0
     case MORE_BASE = 3
     case MORE_TREBEL = 2
     case VOICE = 1
-    
+    case CUSTOM = 6
+
 }

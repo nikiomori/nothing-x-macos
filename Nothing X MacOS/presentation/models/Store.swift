@@ -42,6 +42,25 @@ enum TripleTapOptions: String, CaseIterable, Hashable {
 
 enum TapAndHoldOptions: String, CaseIterable, Hashable {
     case noise_control = "noise control"
+    case voice_assistant = "voice assistant"
+    case volume_up = "volume up"
+    case volume_down = "volume down"
+    case no_extra_action = "no extra action"
+}
+
+enum DoubleTapOptions: String, CaseIterable, Hashable {
+    case play_pause = "play / pause"
+    case skip_forward = "skip forward"
+    case skip_back = "skip back"
+    case voice_assistant = "voice assistant"
+    case no_action = "no action"
+}
+
+enum DoubleTapAndHoldOptions: String, CaseIterable, Hashable {
+    case noise_control = "noise control"
+    case volume_up = "volume up"
+    case volume_down = "volume down"
+    case voice_assistant = "voice assistant"
     case no_extra_action = "no extra action"
 }
 

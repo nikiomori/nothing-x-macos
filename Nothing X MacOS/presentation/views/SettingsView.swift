@@ -167,6 +167,37 @@ struct SettingsView: View {
                                 // LOW LAG MODE
                                 
                                 
+                                // Personalized ANC (Ear 2 only)
+                                if viewModel.supportsPersonalizedANC {
+                                    VStack(alignment: .leading) {
+                                        Toggle("Personalized ANC", isOn: $viewModel.personalizedANCSwitch)
+                                            .onChange(of: viewModel.personalizedANCSwitch) { newValue in
+                                                guard !viewModel.isUpdatingFromDevice else { return }
+                                                viewModel.switchPersonalizedANC(mode: newValue)
+                                            }
+
+                                        Text("Noise cancellation calibrated to your hearing.")
+                                            .font(.system(size: 10, weight: .light))
+                                            .foregroundColor(Color(#colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)))
+                                            .padding(.trailing, 64)
+                                    }
+                                    .padding(.vertical, 6)
+                                }
+
+                                // Ear Tip Fit Test
+                                if viewModel.supportsEarTipTest {
+                                    NavigationLink("EAR TIP FIT TEST", value: Destination.earTipTest)
+                                        .buttonStyle(FindMyTransparentButton())
+                                        .padding(.bottom, 4)
+                                }
+
+                                // Case LED Color (Ear 1 only)
+                                if viewModel.supportsCaseLED {
+                                    NavigationLink("CASE LED COLOR", value: Destination.caseLED)
+                                        .buttonStyle(FindMyTransparentButton())
+                                        .padding(.bottom, 4)
+                                }
+
                                 // Find My Earbuds
                                 NavigationLink("FIND MY EARBUDS", value: Destination.findMyBuds)
                                     .buttonStyle(FindMyTransparentButton())
@@ -274,7 +305,14 @@ struct SettingsView: View {
                     viewModel.isUpdatingFromDevice = true
                     viewModel.inEarSwitch = device.isInEarDetectionOn
                     viewModel.latencySwitch = device.isLowLatencyOn
+                    viewModel.personalizedANCSwitch = device.isPersonalizedANCEnabled
                     viewModel.isUpdatingFromDevice = false
+
+                    // Update capabilities
+                    let caps = DeviceCapabilities.capabilities(for: device.codename)
+                    viewModel.supportsPersonalizedANC = caps.supportsPersonalizedANC
+                    viewModel.supportsEarTipTest = caps.supportsEarTipTest
+                    viewModel.supportsCaseLED = caps.supportsCaseLED
                 }
             }
             if viewModel.shouldShowForgetDialog {

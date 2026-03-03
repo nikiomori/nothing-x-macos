@@ -87,77 +87,44 @@ struct FindMyBudsView: View {
             
             
             VStack {
-                VStack(alignment: .center) {
-                    HStack(alignment: .center) {
-                        VStack {
-                            if viewModel.isRinging {
-                                
-                                ZStack {
-                                    
-                                    Circle()
-                                        .stroke(Color.red.opacity(1.0), lineWidth: 0.8)
-                                                   .scaleEffect(scale) // Scale effect based on the scale state
-                                                   .opacity(opacity) // Opacity effect based on the opacity state
-                                                   .onAppear {
-                                                       // Start the animation loop when the view appears
-                                                      
-//
-                                                   }
-                                                   
-                                    
-                                    
-                                    Circle()
-                                        .stroke(Color.red.opacity(1.0), lineWidth: 0.8)
-                                        .scaleEffect(secondCircleScale) // Scale effect for the second circle
-                                        .opacity(secondCircleOpacity) // Opacity effect for the second circle
-                                        .onAppear {
-                                            // Start the animation for the second circle
-                                        }
-                                    
-                                    HStack {
-                                        Image(systemName: "stop.fill")
-                                            .font(.system(size: 18, weight: .light))
-                                            .aspectRatio(contentMode: .fit) // Maintain aspect ratio
-                                            .foregroundColor(.white)
-                                    }
-                                    .frame(width: 60, height: 60)
-                                    .background(Color(#colorLiteral(red: 0.843137264251709, green: 0.09019608050584793, blue: 0.12941177189350128, alpha: 1)))
-                                    .clipShape(Circle()
-                                    )
-                                    .onTapGesture {
-                                        
-                                        viewModel.stopRingingBuds()
-                                        withAnimation {
-                                            isRunning = false
-                                        }
-                                      
-                                    }
-                                    
-                                }
-                                .frame(width: 60, height: 60)
-                                
-                           
-                            } else {
-                              
-                                HStack {
-                                    Image(systemName: "play.fill")
-                                        .font(.system(size: 18, weight: .light))
-                                        .aspectRatio(contentMode: .fit) // Maintain aspect ratio
-                                        .foregroundColor(.white)
-                                }
-                                .frame(width: 60, height: 60)
-                                .background(Color(#colorLiteral(red: 0.843137264251709, green: 0.09019608050584793, blue: 0.12941177189350128, alpha: 1)))
-                                .clipShape(Circle())
-                                .onTapGesture {
-                                    withAnimation {
-                                        viewModel.shouldShowWarning = true
-                                    }
-                                }
+                if viewModel.isRinging {
+                    // Stop button with ripple animation
+                    ZStack {
+                        Circle()
+                            .stroke(Color.red.opacity(1.0), lineWidth: 0.8)
+                            .scaleEffect(scale)
+                            .opacity(opacity)
+
+                        Circle()
+                            .stroke(Color.red.opacity(1.0), lineWidth: 0.8)
+                            .scaleEffect(secondCircleScale)
+                            .opacity(secondCircleOpacity)
+
+                        HStack {
+                            Image(systemName: "stop.fill")
+                                .font(.system(size: 18, weight: .light))
+                                .aspectRatio(contentMode: .fit)
+                                .foregroundColor(.white)
+                        }
+                        .frame(width: 60, height: 60)
+                        .background(Color(#colorLiteral(red: 0.843137264251709, green: 0.09019608050584793, blue: 0.12941177189350128, alpha: 1)))
+                        .clipShape(Circle())
+                        .onTapGesture {
+                            viewModel.stopRinging()
+                            withAnimation {
+                                isRunning = false
                             }
                         }
                     }
+                    .frame(width: 60, height: 60)
+                } else {
+                    // Ring buttons: Left | Both | Right
+                    HStack(spacing: 12) {
+                        ringButton(icon: "ear", label: "L", target: .left)
+                        ringButton(icon: "play.fill", label: nil, target: .both, size: 50)
+                        ringButton(icon: "ear", label: "R", target: .right)
+                    }
                 }
-                
             }
             
             }
@@ -172,14 +139,14 @@ struct FindMyBudsView: View {
                     .zIndex(3)
                 
                 ModalSheetView(isPresented: $viewModel.shouldShowWarning, title: $title, text: $text, topButtonText: $topButtonText, bottomButtonText: $bottomButtonText, action: {
-                    
+
                     if (!isRunning) {
                         withAnimation {
                             isRunning = true
                         }
                         startAnimation()
                     }
-                    viewModel.ringBuds()
+                    viewModel.confirmRing()
 
                 }, onCancelAction: {})
                 .animation(.easeInOut, value: viewModel.shouldShowWarning) // Animate the appearance
@@ -191,7 +158,31 @@ struct FindMyBudsView: View {
         .background(.black)
         .frame(width: 250, height: 230)
         .onDisappear {
-            viewModel.stopRingingBuds()
+            viewModel.stopRinging()
+        }
+    }
+
+    @ViewBuilder
+    private func ringButton(icon: String, label: String?, target: RingTarget, size: CGFloat = 36) -> some View {
+        VStack(spacing: 4) {
+            HStack {
+                Image(systemName: icon)
+                    .font(.system(size: size == 50 ? 18 : 12, weight: .light))
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(.white)
+            }
+            .frame(width: size, height: size)
+            .background(Color(#colorLiteral(red: 0.843137264251709, green: 0.09019608050584793, blue: 0.12941177189350128, alpha: 1)))
+            .clipShape(Circle())
+            .onTapGesture {
+                viewModel.requestRing(target: target)
+            }
+
+            if let label = label {
+                Text(label)
+                    .font(.system(size: 9, weight: .light))
+                    .foregroundColor(.gray)
+            }
         }
     }
     

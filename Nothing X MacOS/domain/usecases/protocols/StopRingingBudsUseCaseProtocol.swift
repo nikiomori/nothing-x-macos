@@ -8,7 +8,9 @@
 import Foundation
 
 protocol StopRingingBudsUseCaseProtocol {
-    
+
     func stopRingingBuds()
-    
+
+    func stopRingingBud(device: DeviceType)
+
 }

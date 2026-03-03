@@ -11,8 +11,8 @@
 		65715F472D799E53001F3E36 /* radio_button_not_selected_dark.png in Resources */ = {isa = PBXBuildFile; fileRef = 65715F452D799E53001F3E36 /* radio_button_not_selected_dark.png */; };
 		65715F482D799E53001F3E36 /* radio_button_selected_dark.png in Resources */ = {isa = PBXBuildFile; fileRef = 65715F462D799E53001F3E36 /* radio_button_selected_dark.png */; };
 		658FEF082D7EFAC800699B1A /* bluetooth_disabled.svg in Resources */ = {isa = PBXBuildFile; fileRef = 658FEF072D7EFAC800699B1A /* bluetooth_disabled.svg */; };
-		C1F25DE137CDD1CFBCF50DA2 /* ndot-45.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E85264BE79C1FEFDB245C43 /* ndot-45.otf */; };
 		80EF4286A740E4645BF3FE9A /* ndot-45.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E85264BE79C1FEFDB245C43 /* ndot-45.otf */; };
+		C1F25DE137CDD1CFBCF50DA2 /* ndot-45.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E85264BE79C1FEFDB245C43 /* ndot-45.otf */; };
 		CD85BB162AD4A1A1CBF20B43 /* ndot-45.otf in Resources */ = {isa = PBXBuildFile; fileRef = 4E85264BE79C1FEFDB245C43 /* ndot-45.otf */; };
 		D60A9B092992693300749EB6 /* 5by7.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D60A9B082992693300749EB6 /* 5by7.ttf */; };
 		D60A9B0A2992693300749EB6 /* 5by7.ttf in Resources */ = {isa = PBXBuildFile; fileRef = D60A9B082992693300749EB6 /* 5by7.ttf */; };
@@ -48,11 +48,11 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		4E85264BE79C1FEFDB245C43 /* ndot-45.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ndot-45.otf"; sourceTree = "<group>"; };
 		65715E472D76E5FE001F3E36 /* exportOptions.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = exportOptions.plist; sourceTree = "<group>"; };
 		65715F452D799E53001F3E36 /* radio_button_not_selected_dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = radio_button_not_selected_dark.png; sourceTree = "<group>"; };
 		65715F462D799E53001F3E36 /* radio_button_selected_dark.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = radio_button_selected_dark.png; sourceTree = "<group>"; };
 		658FEF072D7EFAC800699B1A /* bluetooth_disabled.svg */ = {isa = PBXFileReference; lastKnownFileType = text; path = bluetooth_disabled.svg; sourceTree = "<group>"; };
-		4E85264BE79C1FEFDB245C43 /* ndot-45.otf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ndot-45.otf"; sourceTree = "<group>"; };
 		D60A9B082992693300749EB6 /* 5by7.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = 5by7.ttf; sourceTree = "<group>"; };
 		D60C145A29697E7B003E10D4 /* Nothing X MacOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Nothing X MacOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		D60C145D29697E7B003E10D4 /* Nothing_X_MacOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Nothing_X_MacOSApp.swift; sourceTree = "<group>"; };
@@ -526,7 +526,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -559,7 +559,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOS";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -577,7 +577,7 @@
 				DEVELOPMENT_TEAM = ZDQ9CMTR26;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.1;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -596,7 +596,7 @@
 				DEVELOPMENT_TEAM = ZDQ9CMTR26;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 13.1;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOSTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -613,7 +613,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = ZDQ9CMTR26;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOSUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -630,7 +630,7 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = ZDQ9CMTR26;
 				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.arunavoray.Nothing-X-MacOSUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;

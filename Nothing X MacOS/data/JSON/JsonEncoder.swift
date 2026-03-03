@@ -86,6 +86,7 @@ class JsonEncoder {
 
     // Add or update a device
     func addOrUpdateDevice(_ device: NothingDeviceDTO) {
+        device.lastConnected = Date()
         devices[device.bluetoothDetails.mac] = device
         scheduleSave()
     }

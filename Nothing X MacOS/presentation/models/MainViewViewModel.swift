@@ -32,6 +32,10 @@ class MainViewViewModel : ObservableObject {
     @Published var rightTripleTapAction: TripleTapGestureActions = .SKIP_BACK
     @Published var leftTapAndHoldAction: TapAndHoldGestureActions = .NO_EXTRA_ACTION
     @Published var rightTapAndHoldAction: TapAndHoldGestureActions = .NOISE_CONTROL
+    @Published var leftDoubleTapAction: DoubleTapGestureActions = .PLAY_PAUSE
+    @Published var rightDoubleTapAction: DoubleTapGestureActions = .PLAY_PAUSE
+    @Published var leftDoubleTapAndHoldAction: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION
+    @Published var rightDoubleTapAndHoldAction: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION
     
     
     
@@ -87,11 +91,15 @@ class MainViewViewModel : ObservableObject {
             if let device = notification.object as? NothingDeviceEntity {
                 self.nothingDevice = device
                 withAnimation {
-                    self.eqProfiles = device.listeningMode
+                    self.eqProfiles = device.isAdvancedEQEnabled ? .CUSTOM : device.listeningMode
                     self.rightTripleTapAction = device.tripleTapGestureActionRight
                     self.leftTripleTapAction = device.tripleTapGestureActionLeft
                     self.rightTapAndHoldAction = device.tapAndHoldGestureActionRight
                     self.leftTapAndHoldAction = device.tapAndHoldGestureActionLeft
+                    self.leftDoubleTapAction = device.doubleTapGestureActionLeft
+                    self.rightDoubleTapAction = device.doubleTapGestureActionRight
+                    self.leftDoubleTapAndHoldAction = device.doubleTapAndHoldGestureActionLeft
+                    self.rightDoubleTapAndHoldAction = device.doubleTapAndHoldGestureActionRight
                 }
                 
                 self.jsonEncoder.addOrUpdateDevice(device.toDTO())

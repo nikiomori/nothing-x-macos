@@ -17,4 +17,8 @@ class StopRingingBudsUseCase : StopRingingBudsUseCaseProtocol {
     func stopRingingBuds() {
         nothingService.stopRingingBuds()
     }
+
+    func stopRingingBud(device: DeviceType) {
+        nothingService.stopRingingBud(device: device)
+    }
 }

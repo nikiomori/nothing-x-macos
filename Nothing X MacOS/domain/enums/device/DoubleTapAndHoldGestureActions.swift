@@ -1,17 +1,16 @@
 //
-//  TapAndHoldGestureActions.swift
+//  DoubleTapAndHoldGestureActions.swift
 //  Nothing X MacOS
-//
-//  Created by Daniel on 2025/3/7.
 //
 
 import Foundation
-enum TapAndHoldGestureActions : UInt8, Codable {
-    case NOISE_CONTROL = 10
-    case NO_EXTRA_ACTION = 1
-    case VOICE_ASSISTANT = 11
+
+enum DoubleTapAndHoldGestureActions: UInt8, Codable {
     case VOLUME_UP = 18
     case VOLUME_DOWN = 19
+    case VOICE_ASSISTANT = 11
+    case NO_EXTRA_ACTION = 1
+    case NOISE_CONTROL = 10
     case NOISE_CONTROL_ANC_OFF = 20
     case NOISE_CONTROL_TRANS_OFF = 21
     case NOISE_CONTROL_ANC_TRANS = 22
@@ -25,7 +24,6 @@ enum TapAndHoldGestureActions : UInt8, Codable {
         }
     }
 
-    /// Returns (anc, transparency, off) booleans for the noise control cycle
     var ancCycleState: (anc: Bool, transparency: Bool, off: Bool) {
         switch self {
         case .NOISE_CONTROL:
@@ -41,8 +39,7 @@ enum TapAndHoldGestureActions : UInt8, Codable {
         }
     }
 
-    /// Creates action from cycle booleans. Requires at least 2 selected.
-    static func fromCycleState(anc: Bool, transparency: Bool, off: Bool) -> TapAndHoldGestureActions {
+    static func fromCycleState(anc: Bool, transparency: Bool, off: Bool) -> DoubleTapAndHoldGestureActions {
         switch (anc, transparency, off) {
         case (true, false, true):
             return .NOISE_CONTROL_ANC_OFF

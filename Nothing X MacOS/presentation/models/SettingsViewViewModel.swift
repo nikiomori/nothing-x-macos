@@ -14,33 +14,40 @@ class SettingsViewViewModel : ObservableObject {
     private let deleteSavedDeviceUseCase: DeleteSavedUseCaseProtocol
     private let getSavedDevicesUseCase: GetSavedDevicesUseCaseProtocol
     private let isNothingConnectedUseCase: IsNothingConnectedUseCaseProtocol
-    
+    private let nothingService: NothingService
+
     @Published var shouldShowForgetDialog = false
     @Published var latencySwitch = false
     @Published var inEarSwitch = false
+    @Published var personalizedANCSwitch = false
 
     var isUpdatingFromDevice = false
-    
+
     @Published var name: String = ""
     @Published var mac: String = ""
     @Published var serial: String = ""
     @Published var firmware: String = ""
     @Published var isNothingDeviceAccessible = false
-    
-    
+
+    // Device capabilities
+    @Published var supportsPersonalizedANC = false
+    @Published var supportsEarTipTest = false
+    @Published var supportsCaseLED = false
+
     @Published var nothingDevice: NothingDeviceEntity?
     
     
     init(nothingService: NothingService, nothingRepository: NothingRepository) {
+        self.nothingService = nothingService
         self.switchLatencyUseCase = SwitchLatencyUseCase(nothingService: nothingService)
         self.switchInEarDetectionUseCase = SwitchInEarDetectionUseCase(nothingService: nothingService)
         self.deleteSavedDeviceUseCase = DeleteSavedDeviceUseCase(nothingRepository: nothingRepository)
         self.getSavedDevicesUseCase = GetSavedDevicesUseCase(nothingRepository: nothingRepository)
         self.isNothingConnectedUseCase = IsNothingConnectedUseCase(nothingService: nothingService)
-        
-        
+
+
         NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
-            
+
 
             if let device = notification.object as? NothingDeviceEntity {
 
@@ -49,10 +56,17 @@ class SettingsViewViewModel : ObservableObject {
                 self.isUpdatingFromDevice = true
                 self.latencySwitch = device.isLowLatencyOn
                 self.inEarSwitch = device.isInEarDetectionOn
+                self.personalizedANCSwitch = device.isPersonalizedANCEnabled
                 self.isUpdatingFromDevice = false
 
+                // Update capabilities
+                let caps = DeviceCapabilities.capabilities(for: device.codename)
+                self.supportsPersonalizedANC = caps.supportsPersonalizedANC
+                self.supportsEarTipTest = caps.supportsEarTipTest
+                self.supportsCaseLED = caps.supportsCaseLED
+
                 self.nothingDevice = device
-                
+
                 self.name = device.bluetoothDetails.name
                 self.mac = device.bluetoothDetails.mac
                 self.serial = device.serial
@@ -81,10 +95,18 @@ class SettingsViewViewModel : ObservableObject {
         switchInEarDetectionUseCase.switchInEarDetection(mode: mode)
     }
     
+    func switchPersonalizedANC(mode: Bool) {
+        nothingService.switchPersonalizedANC(enabled: mode)
+    }
+
+    func launchEarTipTest() {
+        nothingService.launchEarTipTest()
+    }
+
     func forgetDevice() {
         let devices = getSavedDevicesUseCase.getSaved()
         deleteSavedDeviceUseCase.delete(device: devices[0])
     }
-    
-    
+
+
 }

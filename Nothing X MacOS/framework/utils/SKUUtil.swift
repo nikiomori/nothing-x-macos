@@ -116,6 +116,10 @@ func codenameFromSKU(sku: SKU) -> Codenames {
         return .CLEFFA
     case .CLEFFA_YELLOW_3:
         return .CLEFFA
+    case .ENTEI_BLACK_1, .ENTEI_WHITE_1, .ENTEI_BLACK_2, .ENTEI_WHITE_2, .ENTEI_BLACK_3, .ENTEI_WHITE_3:
+        return .TWOS
+    case .EAR3_1, .EAR3_2:
+        return .EAR3
     default:
         return .UNKNOWN
     }

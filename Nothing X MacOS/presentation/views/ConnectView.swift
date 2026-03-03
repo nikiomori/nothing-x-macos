@@ -59,16 +59,49 @@ struct ConnectView: View {
                     Spacer(minLength: 15)
                     
                     if viewModel.isLoading {
-                        // Show loading spinner
-                        ProgressView() // You can customize the text
+                        ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
                             .tint(Color.white)
                             .colorInvert()
                             .scaleEffect(0.6)
-                        
-                        
+
+                    } else if viewModel.savedDevices.count > 1 {
+                        VStack(spacing: 2) {
+                            ForEach(viewModel.savedDevices, id: \.bluetoothDetails.mac) { device in
+                                Button(action: {
+                                    viewModel.checkBluetoothStatus()
+                                    if viewModel.isBluetoothOn {
+                                        viewModel.connect(device: device)
+                                    } else {
+                                        mainViewModel.navigateToBluetoothIsOff()
+                                    }
+                                }) {
+                                    HStack {
+                                        VStack(alignment: .leading, spacing: 1) {
+                                            Text(device.name)
+                                                .font(.system(size: 10, weight: .medium))
+                                                .foregroundColor(.white)
+                                            if let date = device.lastConnected {
+                                                Text(date, style: .relative)
+                                                    .font(.system(size: 8))
+                                                    .foregroundColor(.gray)
+                                            }
+                                        }
+                                        Spacer()
+                                        Image(systemName: "arrow.right.circle")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.gray)
+                                    }
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(Color(#colorLiteral(red: 0.10980392247438431, green: 0.11372549086809158, blue: 0.12156862765550613, alpha: 1)))
+                                    .cornerRadius(4)
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding(.horizontal, 16)
                     } else {
-                        // Connect Button
                         Button("RECONNECT") {
                             viewModel.checkBluetoothStatus()
                             if viewModel.isBluetoothOn {
@@ -76,12 +109,9 @@ struct ConnectView: View {
                             } else {
                                 mainViewModel.navigateToBluetoothIsOff()
                             }
-                        
                         }
                         .buttonStyle(OffWhiteConnectButton())
                         .focusable(false)
-                        
-                        
                     }
                     Spacer(minLength: 15)
                 }
@@ -116,6 +146,7 @@ struct ConnectView: View {
         .frame(width: 250,height: 230)
         .navigationBarBackButtonHidden(true)
         .onAppear {
+            viewModel.loadSavedDevices()
             viewModel.checkBluetoothStatus()
             if viewModel.isBluetoothOn && !viewModel.isLoading {
                 viewModel.connect()

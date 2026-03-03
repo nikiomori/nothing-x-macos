@@ -16,6 +16,11 @@ enum Commands : UInt16 {
     case GET_IN_EAR_STATUS = 0x0EC0
     case GET_LATENCY = 0x41C0
     case GET_GESTURES = 0x18C0
+    case GET_CUSTOM_EQ = 0x24C0
+    case GET_ADVANCED_EQ = 0x2CC0
+    case GET_ENHANCED_BASS = 0x2EC0
+    case GET_PERSONALIZED_ANC = 0x20C0
+    case GET_CASE_LED = 0x17C0
     
     case SET_ANC = 0x0FF0
     case SET_EQ = 0x10F0
@@ -23,6 +28,12 @@ enum Commands : UInt16 {
     case SET_IN_EAR_STATUS = 0x04F0
     case SET_RING_BUDS = 0x02F0
     case SET_GESTURE = 0x03F0
+    case SET_CUSTOM_EQ = 0x41F0
+    case SET_ADVANCED_EQ = 0x4FF0
+    case SET_ENHANCED_BASS = 0x51F0
+    case SET_PERSONALIZED_ANC = 0x11F0
+    case SET_EAR_TIP_TEST = 0x14F0
+    case SET_CASE_LED = 0x0DF0
     
     case READ_BATTERY_ONE = 57345
     case READ_BATTERY_THREE = 57346
@@ -38,6 +49,12 @@ enum Commands : UInt16 {
     
     case READ_LATENCY = 16449
     case READ_IN_EAR_MODE = 16398
+    case READ_CUSTOM_EQ = 16452
+    case READ_ADVANCED_EQ = 16460
+    case READ_ENHANCED_BASS = 16462
+    case READ_PERSONALIZED_ANC = 16416
+    case READ_EAR_TIP_RESULT = 57357
+    case READ_CASE_LED = 16407
     
     case SUCCESS_COMMAND_1 = 28676
     

@@ -16,6 +16,7 @@ private enum DeviceError: Error {
 
 // Define a structure to represent a request
 private struct Request {
+    let id: UUID = UUID()
     let command: Commands
     let operationID: UInt8
     let payload: [UInt8]
@@ -23,6 +24,7 @@ private struct Request {
     let requestTimeout: TimeInterval
     let responseTimeout: TimeInterval
     var retryCount: Int = 0 // Track the number of retries
+    var maxRetries: Int = 3 // Max retries for this request (default matches global)
 }
 
 class NothingServiceImpl : NothingService {
@@ -61,6 +63,15 @@ class NothingServiceImpl : NothingService {
                         }
                         if !saved.name.isEmpty {
                             self.nothingDevice?.name = saved.name
+                        }
+                    }
+
+                    // Fallback: detect codename from device name if still unknown
+                    if self.nothingDevice?.codename == .UNKNOWN {
+                        let detected = codenameFromDeviceName(name: device.name)
+                        if detected != .UNKNOWN {
+                            self.nothingDevice?.codename = detected
+                            self.log.info("Codename detected from device name: \(detected)")
                         }
                     }
 
@@ -106,6 +117,108 @@ class NothingServiceImpl : NothingService {
         
     }
     
+
+    // MARK: - Custom EQ
+
+    func switchCustomEQ(bass: Float, mid: Float, treble: Float) {
+        let payload = buildCustomEQPayload(bass: bass, mid: mid, treble: treble)
+
+        addRequest(command: Commands.SET_CUSTOM_EQ, operationID: Commands.SET_CUSTOM_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Successfully set custom EQ")
+                self.nothingDevice?.customEQBass = bass
+                self.nothingDevice?.customEQMid = mid
+                self.nothingDevice?.customEQTreble = treble
+            case .failure(let error):
+                self.log.error("Failed to set custom EQ: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    func setAdvancedEQ(enabled: Bool) {
+        let payload: [UInt8] = [enabled ? 0x01 : 0x00, 0x00]
+
+        addRequest(command: Commands.SET_ADVANCED_EQ, operationID: Commands.SET_ADVANCED_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Successfully set advanced EQ: \(enabled)")
+                self.nothingDevice?.isAdvancedEQEnabled = enabled
+            case .failure(let error):
+                self.log.error("Failed to set advanced EQ: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Enhanced Bass
+
+    func switchEnhancedBass(enabled: Bool, level: Int) {
+        let payload: [UInt8] = [enabled ? 0x01 : 0x00, UInt8(level * 2)]
+
+        addRequest(command: Commands.SET_ENHANCED_BASS, operationID: Commands.SET_ENHANCED_BASS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Successfully set enhanced bass: \(enabled), level: \(level)")
+                self.nothingDevice?.isEnhancedBassEnabled = enabled
+                self.nothingDevice?.enhancedBassLevel = level
+            case .failure(let error):
+                self.log.error("Failed to set enhanced bass: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Personalized ANC
+
+    func switchPersonalizedANC(enabled: Bool) {
+        let payload: [UInt8] = [enabled ? 0x01 : 0x00]
+
+        addRequest(command: Commands.SET_PERSONALIZED_ANC, operationID: Commands.SET_PERSONALIZED_ANC.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Successfully set personalized ANC: \(enabled)")
+                self.nothingDevice?.isPersonalizedANCEnabled = enabled
+            case .failure(let error):
+                self.log.error("Failed to set personalized ANC: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Ear Tip Fit Test
+
+    func launchEarTipTest() {
+        let payload: [UInt8] = [0x01]
+
+        addRequest(command: Commands.SET_EAR_TIP_TEST, operationID: Commands.SET_EAR_TIP_TEST.firstEightBits, requestTimeout: 1000, responseTimeout: 5000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Ear tip test launched")
+            case .failure(let error):
+                self.log.error("Failed to launch ear tip test: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Case LED Color
+
+    func setCaseLEDColor(colors: [[UInt8]]) {
+        var payload: [UInt8] = [0x05]
+        for (index, color) in colors.prefix(5).enumerated() {
+            payload.append(UInt8(index + 1))
+            payload.append(contentsOf: color.prefix(3))
+        }
+
+        addRequest(command: Commands.SET_CASE_LED, operationID: Commands.SET_CASE_LED.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, payload: payload) { result in
+            switch result {
+            case .success:
+                self.log.info("Successfully set case LED colors")
+                self.nothingDevice?.caseLEDColors = colors
+            case .failure(let error):
+                self.log.error("Failed to set case LED colors: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // MARK: - Gestures
 
     func switchGesture(device: DeviceType, gesture: GestureType, action: UInt8) {
         let payload: [UInt8] = [0x01, device.rawValue, 0x01, gesture.rawValue, action]
@@ -171,11 +284,19 @@ class NothingServiceImpl : NothingService {
     }
 
     func ringBuds() {
-        setRingBuds(right: true, left: true, doRing: true)
+        setRingBuds(device: nil, doRing: true)
     }
-    
+
     func stopRingingBuds() {
-        setRingBuds(right: true, left: true, doRing: false)
+        setRingBuds(device: nil, doRing: false)
+    }
+
+    func ringBud(device: DeviceType) {
+        setRingBuds(device: device, doRing: true)
+    }
+
+    func stopRingingBud(device: DeviceType) {
+        setRingBuds(device: device, doRing: false)
     }
     
     func switchANC(mode: ANC) {
@@ -364,6 +485,11 @@ class NothingServiceImpl : NothingService {
                     }
                 }
 
+                // Fetch device-specific features after a small delay to allow codename detection
+                DispatchQueue.global().asyncAfter(deadline: .now() + 1.0) {
+                    self.fetchDeviceSpecificData()
+                }
+
             }
 
         }
@@ -371,6 +497,68 @@ class NothingServiceImpl : NothingService {
     }
 
     
+    private func fetchDeviceSpecificData() {
+        guard let codename = nothingDevice?.codename else { return }
+        let caps = DeviceCapabilities.capabilities(for: codename)
+
+        // Device-specific GET commands use maxRetries: 0 to avoid blocking the queue
+        // if the device doesn't respond to these optional commands
+        if caps.supportsCustomEQ {
+            addRequest(command: Commands.GET_ADVANCED_EQ, operationID: Commands.GET_ADVANCED_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                switch result {
+                case .success:
+                    self.log.info("Fetched advanced EQ status")
+                case .failure(let error):
+                    self.log.warning("Failed to fetch advanced EQ (device may not support GET): \(error.localizedDescription)")
+                    self.restoreCachedCustomEQ()
+                }
+            }
+
+            addRequest(command: Commands.GET_CUSTOM_EQ, operationID: Commands.GET_CUSTOM_EQ.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                switch result {
+                case .success:
+                    self.log.info("Fetched custom EQ values")
+                case .failure(let error):
+                    self.log.warning("Failed to fetch custom EQ (device may not support GET): \(error.localizedDescription)")
+                    self.restoreCachedCustomEQ()
+                }
+            }
+        }
+
+        if caps.supportsEnhancedBass {
+            addRequest(command: Commands.GET_ENHANCED_BASS, operationID: Commands.GET_ENHANCED_BASS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                switch result {
+                case .success:
+                    self.log.info("Fetched enhanced bass status")
+                case .failure(let error):
+                    self.log.warning("Failed to fetch enhanced bass (device may not support GET): \(error.localizedDescription)")
+                }
+            }
+        }
+
+        if caps.supportsPersonalizedANC {
+            addRequest(command: Commands.GET_PERSONALIZED_ANC, operationID: Commands.GET_PERSONALIZED_ANC.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                switch result {
+                case .success:
+                    self.log.info("Fetched personalized ANC status")
+                case .failure(let error):
+                    self.log.warning("Failed to fetch personalized ANC (device may not support GET): \(error.localizedDescription)")
+                }
+            }
+        }
+
+        if caps.supportsCaseLED {
+            addRequest(command: Commands.GET_CASE_LED, operationID: Commands.GET_CASE_LED.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                switch result {
+                case .success:
+                    self.log.info("Fetched case LED colors")
+                case .failure(let error):
+                    self.log.warning("Failed to fetch case LED (device may not support GET): \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     #warning("low latency mode switch is not implemented")
     
     private func send(command: UInt16, operationID: UInt8, payload: [UInt8] = []) {
@@ -432,35 +620,38 @@ class NothingServiceImpl : NothingService {
         queueSemaphore.signal()
         
         // Set a timeout for the request
+        let requestID = request.id
         let requestTimeout = DispatchTime.now() + request.requestTimeout
         DispatchQueue.global().asyncAfter(deadline: requestTimeout) {
-            if self.isProcessing {
-                self.log.warning("Request timed out, retrying")
-                // Increment the retry count
-                request.retryCount += 1
-                
-                // Check if the retry count exceeds the maximum allowed
-                if request.retryCount <= self.maxRetries {
-                    // Re-add the request to the queue
-                    self.queueSemaphore.wait()
-                    self.requestQueue.append(request) // Re-add the request
-                    self.queueSemaphore.signal()
-                    
-                    // Call the completion handler with a timeout error
-                    request.completion(.failure(DeviceError.timeoutError("Request timed out.")))
-                    self.isProcessing = false
-                    
-                    // Process the next request
-                    self.processNextRequest()
-                } else {
-                    // Handle the case where the maximum retries have been reached
-                    self.log.error("Maximum retries reached for request")
-                    request.completion(.failure(DeviceError.timeoutError("Maximum retries reached.")))
-                    self.isProcessing = false
-                    
-                    // Process the next request
-                    self.processNextRequest()
-                }
+            // Only handle timeout if this request is still the current one
+            // (stale timeouts from already-completed requests must be ignored)
+            guard self.isProcessing, self.currentRequest?.id == requestID else { return }
+
+            self.log.warning("Request \(request.command) timed out (attempt \(request.retryCount + 1)/\(request.maxRetries + 1))")
+            // Increment the retry count
+            request.retryCount += 1
+
+            // Check if the retry count exceeds the maximum allowed
+            if request.retryCount <= request.maxRetries {
+                // Re-add the request to the queue
+                self.queueSemaphore.wait()
+                self.requestQueue.append(request) // Re-add the request
+                self.queueSemaphore.signal()
+
+                // Call the completion handler with a timeout error
+                request.completion(.failure(DeviceError.timeoutError("Request timed out.")))
+                self.isProcessing = false
+
+                // Process the next request
+                self.processNextRequest()
+            } else {
+                // Handle the case where the maximum retries have been reached
+                self.log.error("Maximum retries reached for request \(request.command)")
+                request.completion(.failure(DeviceError.timeoutError("Maximum retries reached.")))
+                self.isProcessing = false
+
+                // Process the next request
+                self.processNextRequest()
             }
         }
         
@@ -469,12 +660,13 @@ class NothingServiceImpl : NothingService {
     }
     
     // Function to add a request to the queue
-    private func addRequest(command: Commands, operationID: UInt8, requestTimeout: TimeInterval, responseTimeout: TimeInterval, payload: [UInt8] = [], completion: @escaping (Result<Void, Error>) -> Void) {
-        
+    private func addRequest(command: Commands, operationID: UInt8, requestTimeout: TimeInterval, responseTimeout: TimeInterval, payload: [UInt8] = [], maxRetries: Int? = nil, completion: @escaping (Result<Void, Error>) -> Void) {
+
         let requestTimeoutInSeconds = TimeInterval(requestTimeout) / 1000.0
         let responseTimeoutInSeconds = TimeInterval(responseTimeout) / 1000.0
-        
-        let request = Request(command: command, operationID: operationID, payload: payload, completion: completion, requestTimeout: requestTimeoutInSeconds, responseTimeout: responseTimeoutInSeconds)
+
+        let retries = maxRetries ?? self.maxRetries
+        let request = Request(command: command, operationID: operationID, payload: payload, completion: completion, requestTimeout: requestTimeoutInSeconds, responseTimeout: responseTimeoutInSeconds, maxRetries: retries)
         
         queueSemaphore.wait()
         requestQueue.append(request) // Append the request to the queue
@@ -654,28 +846,165 @@ class NothingServiceImpl : NothingService {
         return (hexArray[10] != 0)
     }
 
+    // MARK: - Custom EQ Float Encoding
+
+    private func formatFloatForEQ(_ value: Float, isTotal: Bool = false) -> [UInt8] {
+        if isTotal && value >= 0 {
+            return [0x00, 0x00, 0x00, 0x80]
+        }
+
+        let bitPattern = value.bitPattern
+        var bytes: [UInt8] = [
+            UInt8((bitPattern >> 24) & 0xFF),
+            UInt8((bitPattern >> 16) & 0xFF),
+            UInt8((bitPattern >> 8) & 0xFF),
+            UInt8(bitPattern & 0xFF)
+        ]
+
+        if value != 0 && bytes[0] == 0 && bytes[1] == 0 && bytes[2] == 0 {
+            bytes[3] |= 0x80
+        }
+
+        return [bytes[3], bytes[2], bytes[1], bytes[0]]
+    }
+
+    private func decodeFloatFromEQ(_ bytes: [UInt8]) -> Float {
+        guard bytes.count >= 4 else { return 0.0 }
+        let reversed: [UInt8] = [bytes[3], bytes[2], bytes[1], bytes[0]]
+        let bitPattern = UInt32(reversed[0]) << 24 | UInt32(reversed[1]) << 16 | UInt32(reversed[2]) << 8 | UInt32(reversed[3])
+        return Float(bitPattern: bitPattern)
+    }
+
+    private func buildCustomEQPayload(bass: Float, mid: Float, treble: Float) -> [UInt8] {
+        let totalGain = max(bass, mid, treble) * -1
+        let totalBytes = formatFloatForEQ(totalGain, isTotal: true)
+        let bassBytes = formatFloatForEQ(bass)
+        let midBytes = formatFloatForEQ(mid)
+        let trebleBytes = formatFloatForEQ(treble)
+
+        // Static frequency/Q params from ear-web
+        let bassParams: [UInt8] = [0x00, 0x00, 0x75, 0x44, 0xc3, 0xf5, 0x28, 0x3f]
+        let midParams: [UInt8] = [0x00, 0xc0, 0x5a, 0x45, 0x00, 0x00, 0x80, 0x3f]
+        let trebleParams: [UInt8] = [0x00, 0x00, 0x0c, 0x43, 0xcd, 0xcc, 0x4c, 0x3f]
+
+        var payload: [UInt8] = [0x03]
+        payload.append(contentsOf: totalBytes)
+        payload.append(0x01)
+        payload.append(contentsOf: bassBytes)
+        payload.append(0x00) // separator
+        payload.append(contentsOf: bassParams)
+        payload.append(0x02)
+        payload.append(contentsOf: midBytes)
+        payload.append(contentsOf: midParams)
+        payload.append(0x00)
+        payload.append(contentsOf: trebleBytes)
+        payload.append(contentsOf: trebleParams)
+        payload.append(0x00)
+
+        return payload
+    }
+
+    private func readCustomEQ(hexArray: [UInt8]) {
+        guard hexArray.count >= 44 else {
+            log.warning("Custom EQ response too short: \(hexArray.count) bytes")
+            return
+        }
+        // Float values at offsets 14, 27, 40 (4 bytes each)
+        let trebleBytes = Array(hexArray[14..<18])
+        let bassBytes = Array(hexArray[27..<31])
+        let midBytes = Array(hexArray[40..<44])
+
+        nothingDevice?.customEQBass = decodeFloatFromEQ(bassBytes)
+        nothingDevice?.customEQMid = decodeFloatFromEQ(midBytes)
+        nothingDevice?.customEQTreble = decodeFloatFromEQ(trebleBytes)
+
+        log.info("Custom EQ: bass=\(nothingDevice?.customEQBass ?? 0) mid=\(nothingDevice?.customEQMid ?? 0) treble=\(nothingDevice?.customEQTreble ?? 0)")
+    }
+
+    private func readAdvancedEQ(hexArray: [UInt8]) {
+        guard hexArray.count > 8 else { return }
+        nothingDevice?.isAdvancedEQEnabled = hexArray[8] == 1
+        log.info("Advanced EQ enabled: \(nothingDevice?.isAdvancedEQEnabled ?? false)")
+    }
+
+    private func restoreCachedCustomEQ() {
+        guard let mac = nothingDevice?.bluetoothDetails.mac else { return }
+        let saved = NothingRepositoryImpl.shared.getSaved()
+        guard let cached = saved.first(where: { $0.bluetoothDetails.mac == mac }) else { return }
+
+        if cached.isAdvancedEQEnabled {
+            nothingDevice?.isAdvancedEQEnabled = true
+            log.info("Restored cached advanced EQ: enabled")
+        }
+        if cached.customEQBass != 0 || cached.customEQMid != 0 || cached.customEQTreble != 0 {
+            nothingDevice?.customEQBass = cached.customEQBass
+            nothingDevice?.customEQMid = cached.customEQMid
+            nothingDevice?.customEQTreble = cached.customEQTreble
+            log.info("Restored cached custom EQ: bass=\(cached.customEQBass) mid=\(cached.customEQMid) treble=\(cached.customEQTreble)")
+        }
+    }
+
+    private func readEnhancedBass(hexArray: [UInt8]) {
+        guard hexArray.count > 9 else { return }
+        nothingDevice?.isEnhancedBassEnabled = hexArray[8] == 1
+        nothingDevice?.enhancedBassLevel = Int(hexArray[9]) / 2
+        log.info("Enhanced bass: enabled=\(nothingDevice?.isEnhancedBassEnabled ?? false) level=\(nothingDevice?.enhancedBassLevel ?? 0)")
+    }
+
+    private func readPersonalizedANC(hexArray: [UInt8]) {
+        guard hexArray.count > 8 else { return }
+        nothingDevice?.isPersonalizedANCEnabled = hexArray[8] == 1
+        log.info("Personalized ANC: \(nothingDevice?.isPersonalizedANCEnabled ?? false)")
+    }
+
+    private func readEarTipTestResult(hexArray: [UInt8]) {
+        guard hexArray.count > 9 else { return }
+        let leftResult = hexArray[8]
+        let rightResult = hexArray[9]
+        log.info("Ear tip test result: left=\(leftResult) right=\(rightResult)")
+
+        NotificationCenter.default.post(
+            name: Notification.Name(DataNotifications.EAR_TIP_TEST_RESULT.rawValue),
+            object: nil,
+            userInfo: ["left": leftResult, "right": rightResult]
+        )
+    }
+
+    private func readCaseLED(hexArray: [UInt8]) {
+        guard hexArray.count > 8 else { return }
+        let numberOfLEDs = Int(hexArray[8])
+        var colors: [[UInt8]] = []
+        for i in 0..<numberOfLEDs {
+            let baseIndex = 10 + (i * 4)
+            guard baseIndex + 2 < hexArray.count else { break }
+            colors.append([hexArray[baseIndex], hexArray[baseIndex + 1], hexArray[baseIndex + 2]])
+        }
+        nothingDevice?.caseLEDColors = colors
+        log.info("Case LED colors: \(colors)")
+    }
+
     
-    private func setRingBuds(right: Bool, left: Bool, doRing: Bool) {
-        
-        var byteArray: [UInt8] = [0x00] // Initialize the byte array with a single element
+    private func setRingBuds(device: DeviceType?, doRing: Bool) {
+        let modelBase = nothingDevice?.codename ?? .UNKNOWN
 
-        // Assuming modelBase is a global variable or passed as a parameter
-        let modelBase = Codenames.ONE // Replace this with the actual modelBase value as needed
-
-        if modelBase == Codenames.ONE {
-            // Set the first byte based on the isRing parameter
-            byteArray[0] = doRing ? 0x01 : 0x00
+        if modelBase == .ONE {
+            // Ear (1) uses a 1-byte payload: 0x01 = ring, 0x00 = stop
+            let byteArray: [UInt8] = [doRing ? 0x01 : 0x00]
             send(command: Commands.SET_RING_BUDS.rawValue, operationID: Commands.SET_RING_BUDS.firstEightBits, payload: byteArray)
         } else {
-            // If modelBase is not "B181", initialize a larger byte array
-            byteArray = [0x00, 0x00]
-            // Set the first byte based on the isLeft parameter
-            byteArray[0] = left ? 0x02 : 0x03
-            // Set the second byte based on the isRing parameter
-            byteArray[1] = right ? 0x01 : 0x00
-            send(command: Commands.SET_RING_BUDS.rawValue, operationID: Commands.SET_RING_BUDS.firstEightBits, payload: byteArray)
+            // All other devices use a 2-byte payload: [deviceId, ringState]
+            // device == nil means ring both (send two commands)
+            if let device = device {
+                let byteArray: [UInt8] = [device.rawValue, doRing ? 0x01 : 0x00]
+                send(command: Commands.SET_RING_BUDS.rawValue, operationID: Commands.SET_RING_BUDS.firstEightBits, payload: byteArray)
+            } else {
+                // Ring both buds
+                let leftPayload: [UInt8] = [DeviceType.LEFT.rawValue, doRing ? 0x01 : 0x00]
+                send(command: Commands.SET_RING_BUDS.rawValue, operationID: Commands.SET_RING_BUDS.firstEightBits, payload: leftPayload)
+                let rightPayload: [UInt8] = [DeviceType.RIGHT.rawValue, doRing ? 0x01 : 0x00]
+                send(command: Commands.SET_RING_BUDS.rawValue, operationID: Commands.SET_RING_BUDS.firstEightBits, payload: rightPayload)
+            }
         }
-        
     }
     
     
@@ -729,6 +1058,13 @@ class NothingServiceImpl : NothingService {
                 if sku != .UNKNOWN {
                     nothingDevice?.sku = sku
                     nothingDevice?.codename = codenameFromSKU(sku: sku)
+                } else if nothingDevice?.codename == .UNKNOWN, let name = nothingDevice?.name {
+                    // Fallback: detect from device name
+                    let detected = codenameFromDeviceName(name: name)
+                    if detected != .UNKNOWN {
+                        nothingDevice?.codename = detected
+                        log.info("Codename detected from name fallback: \(detected)")
+                    }
                 }
             }
 
@@ -781,7 +1117,25 @@ class NothingServiceImpl : NothingService {
             for device in result {
                 updateGestureInNothing(deviceType: device.0, gestureType: device.1, action: device.2)
             }
-            
+
+        case Commands.READ_CUSTOM_EQ.rawValue:
+            readCustomEQ(hexArray: rawData)
+
+        case Commands.READ_ADVANCED_EQ.rawValue:
+            readAdvancedEQ(hexArray: rawData)
+
+        case Commands.READ_ENHANCED_BASS.rawValue:
+            readEnhancedBass(hexArray: rawData)
+
+        case Commands.READ_PERSONALIZED_ANC.rawValue:
+            readPersonalizedANC(hexArray: rawData)
+
+        case Commands.READ_EAR_TIP_RESULT.rawValue:
+            readEarTipTestResult(hexArray: rawData)
+
+        case Commands.READ_CASE_LED.rawValue:
+            readCaseLED(hexArray: rawData)
+
         default:
             log.warning("Unhandled command: \(command)")
             
@@ -799,18 +1153,26 @@ class NothingServiceImpl : NothingService {
     
     private func updateGestureInNothing(deviceType: DeviceType, gestureType: GestureType, action: UInt8) {
         if deviceType == .LEFT {
-            if gestureType == .TAP_AND_HOLD {
-                nothingDevice?.tapAndHoldGestureActionLeft = TapAndHoldGestureActions(rawValue: action) ?? TapAndHoldGestureActions.NO_EXTRA_ACTION
-            }
-            if gestureType == .TRIPLE_TAP {
-                nothingDevice?.tripleTapGestureActionLeft = TripleTapGestureActions(rawValue: action) ?? TripleTapGestureActions.NO_EXTRA_ACTION
+            switch gestureType {
+            case .TAP_AND_HOLD:
+                nothingDevice?.tapAndHoldGestureActionLeft = TapAndHoldGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
+            case .TRIPLE_TAP:
+                nothingDevice?.tripleTapGestureActionLeft = TripleTapGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
+            case .DOUBLE_TAP:
+                nothingDevice?.doubleTapGestureActionLeft = DoubleTapGestureActions(rawValue: action) ?? .PLAY_PAUSE
+            case .DOUBLE_TAP_AND_HOLD:
+                nothingDevice?.doubleTapAndHoldGestureActionLeft = DoubleTapAndHoldGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
             }
         } else if deviceType == .RIGHT {
-            if gestureType == .TAP_AND_HOLD {
-                nothingDevice?.tapAndHoldGestureActionRight = TapAndHoldGestureActions(rawValue: action) ?? TapAndHoldGestureActions.NO_EXTRA_ACTION
-            }
-            if gestureType == .TRIPLE_TAP {
-                nothingDevice?.tripleTapGestureActionRight = TripleTapGestureActions(rawValue: action) ?? TripleTapGestureActions.NO_EXTRA_ACTION
+            switch gestureType {
+            case .TAP_AND_HOLD:
+                nothingDevice?.tapAndHoldGestureActionRight = TapAndHoldGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
+            case .TRIPLE_TAP:
+                nothingDevice?.tripleTapGestureActionRight = TripleTapGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
+            case .DOUBLE_TAP:
+                nothingDevice?.doubleTapGestureActionRight = DoubleTapGestureActions(rawValue: action) ?? .PLAY_PAUSE
+            case .DOUBLE_TAP_AND_HOLD:
+                nothingDevice?.doubleTapAndHoldGestureActionRight = DoubleTapAndHoldGestureActions(rawValue: action) ?? .NO_EXTRA_ACTION
             }
         }
     }

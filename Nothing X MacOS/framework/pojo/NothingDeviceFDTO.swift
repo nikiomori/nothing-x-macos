@@ -88,7 +88,58 @@ class NothingDeviceFDTO: ObservableObject {
     @Published var tapAndHoldGestureActionRight: TapAndHoldGestureActions = .NO_EXTRA_ACTION {
         didSet { notifyDataUpdated() }
     }
-     
+
+    @Published var doubleTapGestureActionLeft: DoubleTapGestureActions = .PLAY_PAUSE {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var doubleTapGestureActionRight: DoubleTapGestureActions = .PLAY_PAUSE {
+        didSet { notifyDataUpdated() }
+    }
+
+    @Published var doubleTapAndHoldGestureActionLeft: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var doubleTapAndHoldGestureActionRight: DoubleTapAndHoldGestureActions = .NO_EXTRA_ACTION {
+        didSet { notifyDataUpdated() }
+    }
+
+    // Custom EQ
+    @Published var isAdvancedEQEnabled: Bool = false {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var customEQBass: Float = 0.0 {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var customEQMid: Float = 0.0 {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var customEQTreble: Float = 0.0 {
+        didSet { notifyDataUpdated() }
+    }
+
+    // Enhanced Bass
+    @Published var isEnhancedBassEnabled: Bool = false {
+        didSet { notifyDataUpdated() }
+    }
+    @Published var enhancedBassLevel: Int = 0 {
+        didSet { notifyDataUpdated() }
+    }
+
+    // Personalized ANC
+    @Published var isPersonalizedANCEnabled: Bool = false {
+        didSet { notifyDataUpdated() }
+    }
+
+    // Case LED Colors (5 LEDs, each [R, G, B])
+    @Published var caseLEDColors: [[UInt8]] = Array(repeating: [0xFF, 0x00, 0x00], count: 5) {
+        didSet { notifyDataUpdated() }
+    }
+
+    // Connection History
+    @Published var lastConnected: Date? = nil {
+        didSet { notifyDataUpdated() }
+    }
+
     init(bluetoothDetails: BluetoothDeviceEntity) {
         self.bluetoothDetails = bluetoothDetails
         self.name = bluetoothDetails.name

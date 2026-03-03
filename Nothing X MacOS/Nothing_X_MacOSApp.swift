@@ -41,10 +41,10 @@ struct Nothing_X_MacOSApp: App {
                                 .transition(.asymmetric(insertion: .opacity, removal: .opacity))
                         case .equalizer: EqualizerView(eqMode: $viewModel.eqProfiles)
                         case .controls: ControlsView()
-                        case .controlsTripleTap: ControlsDetailView(destination: .controlsTripleTap, leftTripleTapAction: $viewModel.leftTripleTapAction, rightTripleTapAction: $viewModel.rightTripleTapAction, leftTapAndHoldAction: $viewModel.leftTapAndHoldAction, rightTapAndHoldAction: $viewModel.rightTapAndHoldAction)
-                        case .controlsTapHold: ControlsDetailView(destination: .controlsTapHold,
-                                                                  leftTripleTapAction: $viewModel.leftTripleTapAction, rightTripleTapAction: $viewModel.rightTripleTapAction, leftTapAndHoldAction: $viewModel.leftTapAndHoldAction, rightTapAndHoldAction: $viewModel.rightTapAndHoldAction
-                        )
+                        case .controlsTripleTap: controlsDetailView(.controlsTripleTap)
+                        case .controlsTapHold: controlsDetailView(.controlsTapHold)
+                        case .controlsDoubleTap: controlsDetailView(.controlsDoubleTap)
+                        case .controlsDoubleTapHold: controlsDetailView(.controlsDoubleTapHold)
                         case .settings: SettingsView()
                         case .findMyBuds: FindMyBudsView()
                         case .discover: DiscoverView()
@@ -54,7 +54,9 @@ struct Nothing_X_MacOSApp: App {
                                 .transition(.asymmetric(insertion: .opacity, removal: .opacity))
                         case .discover_started: DiscoverStartedView()
                         case .bluetooth_off: BluetoothIsOffView()
-                            
+                        case .earTipTest: EarTipTestView()
+                        case .caseLED: CaseLEDView()
+
                         }
                         
                         
@@ -74,6 +76,21 @@ struct Nothing_X_MacOSApp: App {
 
         }
         .menuBarExtraStyle(.window)
-        
+
+    }
+
+    @ViewBuilder
+    private func controlsDetailView(_ destination: Destination) -> some View {
+        ControlsDetailView(
+            destination: destination,
+            leftTripleTapAction: $viewModel.leftTripleTapAction,
+            rightTripleTapAction: $viewModel.rightTripleTapAction,
+            leftTapAndHoldAction: $viewModel.leftTapAndHoldAction,
+            rightTapAndHoldAction: $viewModel.rightTapAndHoldAction,
+            leftDoubleTapAction: $viewModel.leftDoubleTapAction,
+            rightDoubleTapAction: $viewModel.rightDoubleTapAction,
+            leftDoubleTapAndHoldAction: $viewModel.leftDoubleTapAndHoldAction,
+            rightDoubleTapAndHoldAction: $viewModel.rightDoubleTapAndHoldAction
+        )
     }
 }

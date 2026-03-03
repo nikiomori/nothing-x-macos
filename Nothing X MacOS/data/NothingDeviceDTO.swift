@@ -8,23 +8,35 @@
 import Foundation
 
 class NothingDeviceDTO : Codable {
-    
-    
+
+
     let name: String
     let serial: String
     let codename: Codenames
     let sku: SKU
     let bluetoothDetails: BluetoothDeviceDTO
     let firmware: String
-    
-    init(name: String, serial: String, codename: Codenames, sku: SKU, bluetoothDetails: BluetoothDeviceDTO, firmware: String) {
+    var lastConnected: Date?
+
+    // Cached custom EQ values
+    var cachedCustomEQBass: Float?
+    var cachedCustomEQMid: Float?
+    var cachedCustomEQTreble: Float?
+    var cachedIsAdvancedEQEnabled: Bool?
+
+    init(name: String, serial: String, codename: Codenames, sku: SKU, bluetoothDetails: BluetoothDeviceDTO, firmware: String, lastConnected: Date? = nil, cachedCustomEQBass: Float? = nil, cachedCustomEQMid: Float? = nil, cachedCustomEQTreble: Float? = nil, cachedIsAdvancedEQEnabled: Bool? = nil) {
         self.name = name
         self.serial = serial
         self.codename = codename
         self.sku = sku
         self.bluetoothDetails = bluetoothDetails
         self.firmware = firmware
+        self.lastConnected = lastConnected
+        self.cachedCustomEQBass = cachedCustomEQBass
+        self.cachedCustomEQMid = cachedCustomEQMid
+        self.cachedCustomEQTreble = cachedCustomEQTreble
+        self.cachedIsAdvancedEQEnabled = cachedIsAdvancedEQEnabled
     }
-    
-    
+
+
 }

@@ -19,5 +19,9 @@ class RingBudsUseCase : RingBudsUseCaseProtocol{
     func ringBuds() {
         nothingService.ringBuds()
     }
+
+    func ringBud(device: DeviceType) {
+        nothingService.ringBud(device: device)
+    }
     
 }

@@ -68,5 +68,9 @@ enum SKU : String, Codable {
     case ESPEON_WHITE_2 = "82"
     case ESPEON_BLACK_3 = "83"
     case FLAFFY_WHITE = "11200005"
-    
+
+    // Ear (3) / Threes
+    case EAR3_1 = "25"
+    case EAR3_2 = "26"
+
 }
