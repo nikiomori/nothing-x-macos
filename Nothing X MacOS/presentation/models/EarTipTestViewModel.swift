@@ -17,6 +17,7 @@ enum EarTipResult {
     case unknown
     case goodSeal
     case poorSeal
+    case notInEar
 }
 
 class EarTipTestViewModel: ObservableObject {
@@ -38,8 +39,8 @@ class EarTipTestViewModel: ObservableObject {
                let left = userInfo["left"] as? UInt8,
                let right = userInfo["right"] as? UInt8 {
 
-                self.leftResult = left == 1 ? .goodSeal : .poorSeal
-                self.rightResult = right == 1 ? .goodSeal : .poorSeal
+                self.leftResult = Self.mapResult(left)
+                self.rightResult = Self.mapResult(right)
                 self.state = .completed
             }
         }
@@ -47,6 +48,14 @@ class EarTipTestViewModel: ObservableObject {
 
     deinit {
         if let observer { NotificationCenter.default.removeObserver(observer) }
+    }
+
+    private static func mapResult(_ value: UInt8) -> EarTipResult {
+        switch value {
+        case 0: return .goodSeal
+        case 1: return .poorSeal
+        default: return .notInEar
+        }
     }
 
     func startTest() {
