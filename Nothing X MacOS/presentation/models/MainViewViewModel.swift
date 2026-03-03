@@ -48,8 +48,9 @@ class MainViewViewModel : ObservableObject {
                         
             self.leftBattery = nil
             self.rightBattery = nil
-            
+
             withAnimation {
+                self.navigationPath = NavigationPath()
                 if self.getSavedDevicesUseCase.getSaved().isEmpty {
                     self.navigationPath.append(Destination.discover)
                 } else {
@@ -63,6 +64,7 @@ class MainViewViewModel : ObservableObject {
             notification in
             
             self.fetchDataUseCase.fetchData()
+            self.navigationPath = NavigationPath()
             self.navigationPath.append(Destination.home)
         }
         
@@ -71,7 +73,8 @@ class MainViewViewModel : ObservableObject {
             notification in
             
             self.disconnectDeviceUseCase.disconnectDevice()
-            
+
+            self.navigationPath = NavigationPath()
             self.navigationPath.append(Destination.discover)
         }
 

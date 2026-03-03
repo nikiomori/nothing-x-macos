@@ -14,6 +14,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
 
     static let shared = BluetoothManager()
 
+    private let log = NXLogger(category: .bluetooth)
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
     private var deviceInquiry: IOBluetoothDeviceInquiry?
@@ -35,23 +36,23 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         switch central.state {
         case .poweredOn:
             bluetoothState = .ON
-            print("Bluetooth is ON")
+            log.info("Bluetooth is ON")
             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.BLUETOOTH_ON.rawValue), object: nil)
-            
+
         case .poweredOff:
             bluetoothState = .OFF
-            print("Bluetooth is OFF")
+            log.info("Bluetooth is OFF")
             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.BLUETOOTH_OFF.rawValue), object: nil)
         case .resetting:
-            print("Bluetooth is resetting")
+            log.warning("Bluetooth is resetting")
         case .unauthorized:
-            print("Bluetooth is unauthorized")
+            log.error("Bluetooth is unauthorized")
         case .unsupported:
-            print("Bluetooth is unsupported")
+            log.error("Bluetooth is unsupported")
         case .unknown:
-            print("Bluetooth state is unknown")
+            log.warning("Bluetooth state is unknown")
         @unknown default:
-            print("A previously unknown state occurred")
+            log.warning("Unknown Bluetooth state")
         }
     }
     
@@ -87,7 +88,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
             deviceInquiry = IOBluetoothDeviceInquiry(delegate: self)
             deviceInquiry?.start()
             deviceClass = withClass
-            print("Looking for devices")
+            log.info("Starting device inquiry")
             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.SEARCHING.rawValue), object: nil)
         }
     }
@@ -95,14 +96,14 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     
     func deviceInquiryComplete(_ sender: IOBluetoothDeviceInquiry!, error: IOReturn, aborted: Bool) {
         deviceInquiry = nil
-        print("Device inquiry complete.")
+        log.info("Device inquiry complete")
         deviceClass = nil
         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.SEARCHING_COMPLETE.rawValue), object: nil)
     }
     
     func deviceInquiryDeviceFound(_ sender: IOBluetoothDeviceInquiry!, device: IOBluetoothDevice!) {
         
-        print("inquiry called")
+        log.debug("Device found during inquiry")
     
         if (device.classOfDevice == deviceClass) {
             
@@ -122,14 +123,14 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         
         DispatchQueue.global(qos: .userInitiated).async {
                 // Check if the device is already connected
-                print("Connecting to device \(address)")
+                self.log.info("Connecting to device \(address)")
                 if !(self.device?.isConnected() ?? false) {
                     self.device = IOBluetoothDevice(addressString: address)
                     
                     // Open a connection to the device
                     let resultConnection = self.device?.openConnection()
                     if resultConnection == kIOReturnSuccess {
-                        print("Connected to device")
+                        self.log.info("Connected to device")
                         let bluetoothDevice = BluetoothDeviceEntity(name: self.device!.name, mac: address, channelId: channelID, isPaired: true, isConnected: true)
                         
                         // Notify on the main thread
@@ -138,7 +139,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
                             
                         }
                     } else {
-                        print("Failed to connect to device")
+                        self.log.error("Failed to connect to device")
                         DispatchQueue.main.async {
                             self.device = nil
                             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil)
@@ -152,12 +153,12 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
                     let resultRFCOMM = self.device?.openRFCOMMChannelAsync(&self.channel, withChannelID: channelID, delegate: self)
                     
                     if resultRFCOMM == kIOReturnSuccess {
-                        print("Opened RFCOMM channel")
+                        self.log.info("Opened RFCOMM channel")
                         DispatchQueue.main.async {
                             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
                         }
                     } else {
-                        print("Failed to open RFCOMM channel")
+                        self.log.error("Failed to open RFCOMM channel")
                         self.device = nil
                         DispatchQueue.main.async {
                             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil)
@@ -191,7 +192,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     
     
     func rfcommChannelClosed(_ channel: IOBluetoothRFCOMMChannel) {
-        print("RFCOMM channel closed.")
+        log.info("RFCOMM channel closed")
         self.device = nil
         self.channel = nil
         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil)
@@ -222,7 +223,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         // 5. Post a Notification (optional, but good practice)
         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.DISCONNECTED.rawValue), object: nil)
         
-        print("Disconnected from device.")
+        log.info("Disconnected from device")
     }
     
     func stopDeviceInquiry() {

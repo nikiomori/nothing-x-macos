@@ -65,7 +65,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading) {
                                     Toggle("In-ear detection", isOn: $viewModel.inEarSwitch)
                                         .onChange(of: viewModel.inEarSwitch) { newValue in
-                                            // Call the function when the toggle changes
+                                            guard !viewModel.isUpdatingFromDevice else { return }
                                             viewModel.switchInEarDetection(mode: newValue)
                                         }
                                     
@@ -79,7 +79,7 @@ struct SettingsView: View {
                                 VStack(alignment: .leading) {
                                     Toggle("Low lag mode", isOn: $viewModel.latencySwitch)
                                         .onChange(of: viewModel.latencySwitch) { newValue in
-                                            // Call the function when the toggle changes
+                                            guard !viewModel.isUpdatingFromDevice else { return }
                                             viewModel.switchLatency(mode: newValue)
                                         }
                                     
@@ -197,10 +197,11 @@ struct SettingsView: View {
             .frame(width: 250, height: 230)
             .onAppear {
                 if let device = mainViewModel.nothingDevice {
-                    print("Settings View latency \(device.isLowLatencyOn)")
-                    print("Settings View in ear \(device.isInEarDetectionOn)")
+                    // Sync toggles from device state
+                    viewModel.isUpdatingFromDevice = true
                     viewModel.inEarSwitch = device.isInEarDetectionOn
                     viewModel.latencySwitch = device.isLowLatencyOn
+                    viewModel.isUpdatingFromDevice = false
                 }
             }
             if viewModel.shouldShowForgetDialog {

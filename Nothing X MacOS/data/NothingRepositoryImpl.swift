@@ -38,8 +38,7 @@ class NothingRepositoryImpl : NothingRepository {
     }
     
     func contains(mac: String) -> Bool {
-        #warning("contains is not implemented")
-        return true
+        encoder.getAllDevices().contains { $0.bluetoothDetails.mac == mac }
     }
     
 }

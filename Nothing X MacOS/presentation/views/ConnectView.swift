@@ -115,6 +115,14 @@ struct ConnectView: View {
         .background(.black)
         .frame(width: 250,height: 230)
         .navigationBarBackButtonHidden(true)
+        .onAppear {
+            viewModel.checkBluetoothStatus()
+            if viewModel.isBluetoothOn && !viewModel.isLoading {
+                viewModel.connect()
+            } else if !viewModel.isBluetoothOn {
+                mainViewModel.navigateToBluetoothIsOff()
+            }
+        }
         
     }
         

@@ -26,9 +26,10 @@ private struct Request {
 }
 
 class NothingServiceImpl : NothingService {
-    
+
     static let shared = NothingServiceImpl()
-    
+
+    private let log = NXLogger(category: .nothingService)
     private var cancellables = Set<AnyCancellable>()
     private let bluetoothManager = BluetoothManager.shared
     private var currentRequest: Request? = nil
@@ -63,7 +64,7 @@ class NothingServiceImpl : NothingService {
                         }
                     }
 
-                    print("Nothing Device object has been created \(self.nothingDevice?.name)")
+                    self.log.info("Device object created: \(self.nothingDevice?.name ?? "unknown")")
 
                     NotificationCenter.default.post(name: Notification.Name(DataNotifications.CONNECTED.rawValue), object: self.nothingDevice)
 
@@ -75,7 +76,7 @@ class NothingServiceImpl : NothingService {
             // Handle the notification here
             if let userInfo = notification.userInfo, let data = userInfo["data"] as? [UInt8] {
                 if let userInfo = notification.userInfo, let data = userInfo["data"] as? [UInt8] {
-                    print("Data received in Nothing Service: \(data)")
+                    self.log.debug("Data received: \(data)")
                     
                     self.onDataReceived(rawData: data)
                 }
@@ -87,7 +88,7 @@ class NothingServiceImpl : NothingService {
         NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
             
             if let deviceFramework = notification.object as? NothingDeviceFDTO {
-                print("Class has been updated in repository")
+                self.log.debug("Device data updated in repository")
                 
                 let nothingDevice = NothingDeviceFDTO.toEntity(deviceFramework)
                 
@@ -98,7 +99,7 @@ class NothingServiceImpl : NothingService {
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FOUND.rawValue), object: nil, queue: .main) { notification in
             
-           print("Found device")
+           self.log.info("Found device")
             if let bluetoothDevice = notification.object as? BluetoothDeviceEntity {
                 
                 NotificationCenter.default.post(name: Notification.Name(DataNotifications.FOUND.rawValue), object: bluetoothDevice, userInfo: nil)
@@ -117,11 +118,11 @@ class NothingServiceImpl : NothingService {
             result in
             switch result {
             case .success:
-                print("Successfully switched gesture settings")
+                self.log.info("Successfully switched gesture settings")
                 self.updateGestureInNothing(deviceType: device, gestureType: gesture, action: action)
-                
+
             case .failure(let error):
-                print("Failed to switch gesture settings: \(error.localizedDescription)")
+                self.log.error("Failed to switch gesture settings: \(error.localizedDescription)")
                 
             }
         }
@@ -142,10 +143,10 @@ class NothingServiceImpl : NothingService {
             result in
             switch result {
             case .success:
-                print("Successfully changed latency settings")
+                self.log.info("Successfully changed latency settings")
                 self.nothingDevice?.isLowLatencyOn = mode
             case .failure(let error):
-                print("Failed to change latency settings: \(error.localizedDescription)")
+                self.log.error("Failed to change latency settings: \(error.localizedDescription)")
                 
             }
         }
@@ -163,15 +164,15 @@ class NothingServiceImpl : NothingService {
             result in
             switch result {
             case .success:
-                print("Successfully switched in ear detection")
+                self.log.info("Successfully switched in-ear detection")
                 self.nothingDevice?.isInEarDetectionOn = mode
             case .failure(let error):
-                print("Failed to fetch eq: \(error.localizedDescription)")
-                
+                self.log.error("Failed to switch in-ear detection: \(error.localizedDescription)")
+
             }
         }
     }
-    
+
     func ringBuds() {
         setRingBuds(right: true, left: true, doRing: true)
     }
@@ -187,8 +188,7 @@ class NothingServiceImpl : NothingService {
         byteArray[1] = mode.rawValue
         
         
-        // Print the byte array
-        print(byteArray)
+        log.debug("ANC payload: \(byteArray)")
         
         // Call the send function with the specified parameters
         
@@ -197,10 +197,10 @@ class NothingServiceImpl : NothingService {
             result in
             switch result {
             case .success:
-                print("Successfully changed ANC settings")
+                self.log.info("Successfully changed ANC settings")
                 self.nothingDevice?.anc = mode
             case .failure(let error):
-                print("Failed to change ANC settings: \(error.localizedDescription)")
+                self.log.error("Failed to change ANC settings: \(error.localizedDescription)")
                 
             }
         }
@@ -213,7 +213,7 @@ class NothingServiceImpl : NothingService {
         
         byteArray[0] = mode.rawValue
         if (nothingDevice == nil) {
-            print("The nothing device is nil")
+            log.warning("Nothing device is nil when switching EQ")
         }
         
         
@@ -221,10 +221,10 @@ class NothingServiceImpl : NothingService {
                 
                 switch result {
                 case .success:
-                    print("Successfully switched in ear detection")
+                    self.log.info("Successfully switched EQ mode")
                     self.nothingDevice?.listeningMode = mode
                 case .failure(let error):
-                    print("Failed to fetch eq: \(error.localizedDescription)")
+                    self.log.error("Failed to switch EQ: \(error.localizedDescription)")
                 }
             }
         
@@ -267,24 +267,23 @@ class NothingServiceImpl : NothingService {
     
     func fetchData() {
         
-        print("fetching data")
- 
+        log.info("Fetching data...")
+
         #warning("there is a change that device gets disconnected during transfer but it is low since it takes less than a second to fetch the data will fix it in the future")
-        print("Nothing is connected \(isNothingConnected())")
-        print("Nothing device \(nothingDevice != nil)")
+        log.debug("Connected: \(isNothingConnected()), device exists: \(nothingDevice != nil)")
         
         if isNothingConnected() && nothingDevice != nil {
             
-            print("adding request")
+            log.debug("Adding fetch requests to queue")
             
             
             addRequest(command: Commands.GET_SERIAL_NUMBER, operationID: Commands.GET_SERIAL_NUMBER.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched serial number.")
+                    self.log.info("Fetched serial number")
                 case .failure(let error):
-                    print("Failed to fetch serial number: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch serial number: \(error.localizedDescription)")
                     
                 }
             }
@@ -293,9 +292,9 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched firmware number.")
+                    self.log.info("Fetched firmware")
                 case .failure(let error):
-                    print("Failed to fetch firmware number: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch firmware: \(error.localizedDescription)")
                     
                 }
             }
@@ -304,9 +303,9 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched battery settings.")
+                    self.log.info("Fetched battery settings")
                 case .failure(let error):
-                    print("Failed to fetch battery settings: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch battery: \(error.localizedDescription)")
                     
                 }
             }
@@ -315,9 +314,9 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched ANC settings.")
+                    self.log.info("Fetched ANC settings")
                 case .failure(let error):
-                    print("Failed to fetch ANC settings: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch ANC: \(error.localizedDescription)")
                     
                 }
             }
@@ -326,9 +325,9 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched eq settings")
+                    self.log.info("Fetched EQ settings")
                 case .failure(let error):
-                    print("Failed to fetch eq: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch EQ: \(error.localizedDescription)")
                     
                 }
             }
@@ -337,20 +336,20 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched latency settings")
+                    self.log.info("Fetched latency settings")
                 case .failure(let error):
-                    print("Failed to fetch eq: \(error.localizedDescription)")
-                    
+                    self.log.error("Failed to fetch latency: \(error.localizedDescription)")
+
                 }
             }
-            
+
             addRequest(command: Commands.GET_IN_EAR_STATUS, operationID: Commands.GET_IN_EAR_STATUS.firstEightBits, requestTimeout: 1000, responseTimeout: 1000) {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched in ear status")
+                    self.log.info("Fetched in-ear status")
                 case .failure(let error):
-                    print("Failed to fetch eq: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch in-ear status: \(error.localizedDescription)")
                     
                 }
             }
@@ -359,9 +358,9 @@ class NothingServiceImpl : NothingService {
                 result in
                 switch result {
                 case .success:
-                    print("Successfully fetched gestures")
+                    self.log.info("Fetched gestures")
                 case .failure(let error):
-                    print("Failed to gestures: \(error.localizedDescription)")
+                    self.log.error("Failed to fetch gestures: \(error.localizedDescription)")
                     
                 }
             }
@@ -378,7 +377,7 @@ class NothingServiceImpl : NothingService {
         var header: [UInt8] = [0x55, 0x60, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
         
         header[7] = UInt8(operationID)
-        print("OPERATION \(operationID)")
+        log.debug("Operation ID: \(operationID)")
         
         // Convert command to bytes
         let commandBytes = withUnsafeBytes(of: command.bigEndian) { Array($0) }
@@ -396,9 +395,8 @@ class NothingServiceImpl : NothingService {
         header.append(UInt8(crc & 0xFF)) // Append low byte
         header.append(UInt8((crc >> 8) & 0xFF))
         
-        // Log the byte array in hex format
         let hexString = header.map { String(format: "%02x", $0) }.joined()
-        print("sending \(hexString)")
+        log.debug("Sending: \(hexString)")
         
         // Send the data
      
@@ -416,12 +414,11 @@ class NothingServiceImpl : NothingService {
     
     // Function to process requests in the queue
     private func processNextRequest() {
-        print("Log queue: processing next request")
+        log.debug("Queue: processing next request")
         queueSemaphore.wait()
-        
-        // Check if there are requests in the queue
+
         guard !requestQueue.isEmpty else {
-            print("Log queue: queue is empty")
+            log.debug("Queue: empty")
             isProcessing = false
             queueSemaphore.signal()
             return
@@ -430,7 +427,7 @@ class NothingServiceImpl : NothingService {
         // Get the next request from the queue
         var request = requestQueue.removeFirst()
         currentRequest = request
-        print("Log queue: first request in queue is \(request.operationID)")
+        log.debug("Queue: processing request \(request.operationID)")
         isProcessing = true
         queueSemaphore.signal()
         
@@ -438,7 +435,7 @@ class NothingServiceImpl : NothingService {
         let requestTimeout = DispatchTime.now() + request.requestTimeout
         DispatchQueue.global().asyncAfter(deadline: requestTimeout) {
             if self.isProcessing {
-                print("Request timed out, attempting to repeat")
+                self.log.warning("Request timed out, retrying")
                 // Increment the retry count
                 request.retryCount += 1
                 
@@ -457,7 +454,7 @@ class NothingServiceImpl : NothingService {
                     self.processNextRequest()
                 } else {
                     // Handle the case where the maximum retries have been reached
-                    print("Maximum retries reached for request. Not re-adding to queue.")
+                    self.log.error("Maximum retries reached for request")
                     request.completion(.failure(DeviceError.timeoutError("Maximum retries reached.")))
                     self.isProcessing = false
                     
@@ -529,10 +526,7 @@ class NothingServiceImpl : NothingService {
             }
         }
         
-        // Print battery levels (optional)
-        print("Battery Left: \(nothingDevice?.leftBattery), Charging: \(nothingDevice?.isLeftCharging)")
-        print("Battery Right: \(nothingDevice?.rightBattery), Charging: \(nothingDevice?.isRightCharging)")
-        print("Battery Case: \(nothingDevice?.caseBattery), Charging: \(nothingDevice?.isCaseCharging)")
+        log.debug("Battery L:\(nothingDevice?.leftBattery ?? -1)% R:\(nothingDevice?.rightBattery ?? -1)% C:\(nothingDevice?.caseBattery ?? -1)%")
     }
     
     private func readGestures(hexArray: [UInt8]) -> [(deviceType: DeviceType, gestureType: GestureType, action: UInt8)] {
@@ -554,7 +548,7 @@ class NothingServiceImpl : NothingService {
         }
         
         for a in array {
-            print("device \(a.0) " + "gesture \(a.1) " + "action \(a.2)")
+            log.debug("Gesture: device=\(a.0) gesture=\(a.1) action=\(a.2)")
         }
         
         return array
@@ -571,7 +565,7 @@ class NothingServiceImpl : NothingService {
         nothingDevice?.anc = unwrappedLevel
   
         
-        print("level \(unwrappedLevel)")
+        log.debug("ANC level: \(unwrappedLevel)")
         
         nothingDevice?.printValues()
         
@@ -581,7 +575,7 @@ class NothingServiceImpl : NothingService {
         
 
         let eqMode: UInt8 = hexArray[8]
-        print("eqMode \(eqMode)")
+        log.debug("EQ mode: \(eqMode)")
         
         return EQProfiles(rawValue: eqMode) ?? EQProfiles.BALANCED
         
@@ -610,13 +604,11 @@ class NothingServiceImpl : NothingService {
         // Filter configurations to find the serial number
         let serialConfigs = configurations.filter { $0.type == 4 && !$0.value.isEmpty }
         
-        print("Configurations:")
         for config in configurations {
-            print("Device: \(config.device), Type: \(config.type), Value: \(config.value)")
+            log.debug("Config: device=\(config.device) type=\(config.type) value=\(config.value)")
         }
-        // Return the serial number if found, otherwise return empty string
         let serialValue = serialConfigs.first?.value ?? "12345678901234567"
-        print("Serial: \(serialValue)")
+        log.info("Serial: \(serialValue)")
         return serialValue
     }
     
@@ -628,8 +620,8 @@ class NothingServiceImpl : NothingService {
         
         // Ensure that the hexArray has enough elements
         guard hexArray.count > 8 else {
-            print("Error: hexArray does not contain enough elements.")
-            return firmwareVersion // Return empty string if not enough data
+            log.error("hexArray does not contain enough elements for firmware")
+            return firmwareVersion
         }
         
         // Get the size from the hexArray
@@ -641,24 +633,24 @@ class NothingServiceImpl : NothingService {
             if index < hexArray.count {
                 firmwareVersion += String(UnicodeScalar(hexArray[index]))
             } else {
-                print("Warning: Index \(index) is out of bounds for hexArray.")
+                log.warning("Index \(index) out of bounds for firmware hexArray")
                 break
             }
         }
         
         nothingDevice?.firmware = firmwareVersion
-        print(firmwareVersion)
+        log.info("Firmware: \(firmwareVersion)")
         
         return firmwareVersion
     }
     
     private func readLatencyMode(hexArray: [UInt8]) -> Bool {
-        print("readLatency called")
+        log.debug("Reading latency mode")
         return (hexArray[8] != 0)
     }
     
     private func readInEarDetection(hexArray: [UInt8]) -> Bool {
-        print("readInEar called")
+        log.debug("Reading in-ear detection")
         return (hexArray[10] != 0)
     }
 
@@ -691,16 +683,15 @@ class NothingServiceImpl : NothingService {
     private func onDataReceived(rawData: [UInt8]) {
         
         
-        // Print hex string of the received data
         var hexString = ""
         for byte in rawData {
-            hexString += String(format: "%02x", byte) // Format each byte as a two-digit hex
+            hexString += String(format: "%02x", byte)
         }
-        print("Hex string: \(hexString)")
+        log.debug("Received: \(hexString)")
         
         // Check if the first byte is 0x55 and if the length is at least 10
         guard rawData.count >= 8, rawData[0] == 0x55 else {
-            print("Invalid data: first byte is not 0x55 or data length is less than 10")
+            log.warning("Invalid data: first byte is not 0x55 or data length < 8")
             return
         }
         
@@ -776,13 +767,13 @@ class NothingServiceImpl : NothingService {
         case Commands.READ_LATENCY.rawValue:
             
             let latency = readLatencyMode(hexArray: rawData)
-            print("LATENCY \(latency)")
+            log.debug("Latency: \(latency)")
             nothingDevice?.isLowLatencyOn = latency
             
         case Commands.READ_IN_EAR_MODE.rawValue:
             
             let inEarMode = readInEarDetection(hexArray: rawData)
-            print("IN EAR MODE \(inEarMode)")
+            log.debug("In-ear mode: \(inEarMode)")
             nothingDevice?.isInEarDetectionOn = inEarMode
             
         case Commands.READ_GESTURES.rawValue:
@@ -792,15 +783,12 @@ class NothingServiceImpl : NothingService {
             }
             
         default:
-            print("Unhandled command \(command)")
+            log.warning("Unhandled command: \(command)")
             
         }
         
-        print(self.getCurrentRequest()?.command ?? "current request is nil")
+        log.debug("Current request: \(self.getCurrentRequest()?.command.rawValue ?? 0), executed op: \(executedOperationID)")
         if let currentRequest = currentRequest {
-            
-            print("Current request is \(currentRequest.operationID)")
-            print("Executed request is \(executedOperationID)")
             if currentRequest.operationID == executedOperationID as UInt8 {
                 currentRequest.completion(.success(()))
             }
@@ -828,16 +816,9 @@ class NothingServiceImpl : NothingService {
     }
     
     private func getCommand(header: [UInt8]) -> UInt16 {
-        // Print the header for debugging
-        print("header: \(header)")
-        
-        // Extract command bytes from the header (bytes 3 and 4)
         let commandBytes = Array(header[3..<5])
-        print("commandBytes: \(commandBytes)")
-        
-        // Convert command bytes to a UInt16
         let commandInt = (UInt16(commandBytes[0]) | (UInt16(commandBytes[1]) << 8))
-        print("commandInt: \(commandInt)")
+        log.debug("Command: \(commandInt) (bytes: \(commandBytes))")
         
         return commandInt
     }

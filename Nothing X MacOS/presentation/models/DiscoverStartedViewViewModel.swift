@@ -56,7 +56,7 @@ class DiscoverStartedViewViewModel : ObservableObject {
             if let bluetoothDevice = notification.object as? BluetoothDeviceEntity {
                 
                 
-                print("Found device")
+                // Device found during discovery
                 if self.viewState != .found {
                     
                     self.viewState = .found

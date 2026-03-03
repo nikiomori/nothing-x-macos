@@ -10,9 +10,10 @@ import Foundation
 
 
 class JsonEncoder {
+    private let log = NXLogger(category: .persistence)
     private let fileName: String
-    private var devices: [String: NothingDeviceDTO] = [:] // Hashmap for MAC to device entity
-    
+    private var devices: [String: NothingDeviceDTO] = [:]
+
     static let shared = JsonEncoder(fileName: "configurations")
     
     private init(fileName: String) {
@@ -25,7 +26,7 @@ class JsonEncoder {
         let decoder = JSONDecoder()
         
         guard let documentDirectory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            print("Document directory not found.")
+            log.error("Document directory not found")
             return
         }
         
@@ -42,7 +43,7 @@ class JsonEncoder {
             let loadedDevices = try decoder.decode([NothingDeviceDTO].self, from: data)
             devices = Dictionary(uniqueKeysWithValues: loadedDevices.map { ($0.bluetoothDetails.mac, $0) }) // Convert to hashmap
         } catch {
-            print("Error loading devices: \(error)")
+            log.error("Error loading devices: \(error)")
         }
     }
     
@@ -51,9 +52,9 @@ class JsonEncoder {
         do {
             let emptyData = Data() // Empty data to write
             try emptyData.write(to: url) // Create the file
-            print("Created empty JSON file at \(url.path)")
+            log.info("Created config file at \(url.path)")
         } catch {
-            print("Error creating empty JSON file: \(error)")
+            log.error("Error creating config file: \(error)")
         }
     }
     
@@ -66,9 +67,9 @@ class JsonEncoder {
             let jsonData = try encoder.encode(Array(devices.values)) // Encode values of the hashmap
             let fileURL = getFileURL()
             try jsonData.write(to: fileURL)
-            print("Devices saved to \(fileURL.path)")
+            log.debug("Devices saved")
         } catch {
-            print("Error saving devices: \(error)")
+            log.error("Error saving devices: \(error)")
         }
     }
     

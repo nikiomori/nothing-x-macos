@@ -18,6 +18,8 @@ class SettingsViewViewModel : ObservableObject {
     @Published var shouldShowForgetDialog = false
     @Published var latencySwitch = false
     @Published var inEarSwitch = false
+
+    var isUpdatingFromDevice = false
     
     @Published var name: String = ""
     @Published var mac: String = ""
@@ -41,14 +43,14 @@ class SettingsViewViewModel : ObservableObject {
             
 
             if let device = notification.object as? NothingDeviceEntity {
-                
-                print("Settings View latency \(device.isLowLatencyOn)")
-                print("Settings View in ear \(device.isInEarDetectionOn)")
-                
+
+                // Update toggles from device state
+
+                self.isUpdatingFromDevice = true
                 self.latencySwitch = device.isLowLatencyOn
-                
-                
                 self.inEarSwitch = device.isInEarDetectionOn
+                self.isUpdatingFromDevice = false
+
                 self.nothingDevice = device
                 
                 self.name = device.bluetoothDetails.name

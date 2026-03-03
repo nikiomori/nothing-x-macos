@@ -12,7 +12,7 @@ struct BackButtonView: View {
     
     var body: some View {
         Button(action: {
-            print("Back Button Pressed!")
+            // Back button pressed
 //            withAnimation {
                 dismiss()
 //            }
