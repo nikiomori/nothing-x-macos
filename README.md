@@ -1,35 +1,70 @@
-# Nothing X MacOS [Unofficial]
+# Nothing X for macOS (Unofficial)
 
-This is a companion app for Nothing Ear (1) for MacOS. The Nothing X iOS App inspired it.
+An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the Nothing X iOS app, built with SwiftUI and Core Bluetooth.
 
-> Note: The app is under early development. Bluetooth bug fixes and UI optimisations are under way. Feel free to poke around. So far tested only with Nothing Ear (1).
+## Supported Devices
 
-Special credits to:
+**Nothing**
+- Ear (1), Ear (2), Ear (2024), Ear (3)
+- Ear (a), Ear (stick), Ear (open)
+- Headphone (1)
 
-> Ear (web) project developers for bluetooth communication code, it has been really helpful in developing of Nothing X Mac. 
-Link to Ear (web): https://earweb.bttl.xyz
+**CMF by Nothing**
+- Buds 2, Buds 2 Plus, Buds 2a
 
-> Arunavo Ray. The user interface of Nothing X Mac is based on his original work.
-Link to original repository: https://github.com/arunavo4/nothing-x-macos?ysclid=m7w2denfko175827967
+## Features
 
+- **Noise Control** — ANC, Transparency, Off with customizable cycle modes
+- **Equalizer** — Preset profiles (Balanced, More Bass, More Treble, Voice) and Custom EQ with Bass/Mid/Treble sliders
+- **EQ Presets** — Save, load, and manage custom equalizer configurations
+- **Enhanced Bass** — Adjustable bass boost (device-dependent)
+- **Gesture Controls** — Fully customizable Triple Tap, Double Tap, Tap & Hold, Double Tap & Hold actions per earbud
+- **Find My Buds** — Ring left, right, or both earbuds
+- **Ear Tip Fit Test** — Measure ear tip seal quality
+- **Battery Display** — Real-time L/R/Case levels in the menu bar with configurable display mode (L·R, AVG, MIN)
+- **Low Latency Mode** — Toggle for reduced audio latency
+- **In-Ear Detection** — Auto-pause when earbuds are removed
+- **Case LED Customization** — RGB color control for case LEDs (Ear (1) only)
+- **Device Info** — Name, MAC address, serial number, firmware version
 
-## UI Screenshots
+> Feature availability varies by device model.
+
+## Screenshots
 
 <table>
   <tr>
-  <td><img src="assets/NothingX.png" alt="NothingX"></td>
+    <td><img src="assets/NothingX.png" alt="Main View"></td>
     <td><img src="assets/Equaliser.png" alt="Equaliser"></td>
   </tr>
   <tr>
     <td><img src="assets/Controls.png" alt="Controls"></td>
-    <td><img src="assets/FindMyBuds.png" alt="FindMyBuds"></td>
+    <td><img src="assets/EarTipTest.png" alt="Ear Tip Fit Test"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/Settings.png" alt="Settings"></td>
+    <td><img src="assets/FindMyBuds.png" alt="Find My Buds"></td>
   </tr>
 </table>
 
-## LEGAL
+## Requirements
 
-The program and its corresponding code are distributed under the provisions of the GNU General Public License v3.0. (LICENSE)
+- macOS 13.0+
+- Xcode 14.0+
+- Bluetooth-enabled Mac
 
-Any entities, including Nothing Technology Limited and its associated organizations, are legally licensed to use this application for all intents and purposes, encompassing commercial usage, devoid of any obligation to remunerate the software creator. Abidance by the GNU General Public License v3.0 is not mandated for Nothing Technology.
+## Building
 
-This application has been crafted by Daniel (forked from Arunavo), and does not possess any association with, sponsorship from, or endorsement by Nothing Technology. The application's creator, Arunavo, bears no liability for the correctness or comprehensiveness of the materials and content delivered via this application. The elements incorporated within this application, such as text, graphics, logos, imagery, and audio-visual resources, are the exclusive property of Nothing Technology Limited, located at 80 Cheapside, London EC2V 6EE, and are safeguarded by copyright, trademark, and other intellectual property legislations. The use of these resources is prohibited without the explicit written consent of Nothing Technology. All rights pertaining to these resources are retained by Nothing Technology.
+1. Clone the repository
+2. Open `Nothing X MacOS.xcodeproj` in Xcode
+3. Build and run (Cmd+R)
+
+No external dependencies — uses only native Apple frameworks (SwiftUI, Combine, Core Bluetooth).
+
+## Acknowledgements
+
+- [Ear (web)](https://earweb.bttl.xyz) — Bluetooth communication protocol reference
+- [Arunavo Ray](https://github.com/arunavo4/nothing-x-macos) — Original UI and project foundation
+
+## Disclaimer
+
+This application is not associated with, sponsored by, or endorsed by Nothing Technology. Text, graphics, logos, imagery, and audio-visual resources within this application are the property of Nothing Technology Limited (80 Cheapside, London EC2V 6EE) and are protected by copyright, trademark, and other intellectual property laws. Use of these resources requires explicit written consent from Nothing Technology. All rights reserved by Nothing Technology.
