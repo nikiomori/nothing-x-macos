@@ -843,7 +843,7 @@ class NothingServiceImpl : NothingService {
     private func readLatencyMode(hexArray: [UInt8]) -> Bool {
         log.debug("Reading latency mode")
         guard hexArray.count > 8 else { return false }
-        return (hexArray[8] != 0)
+        return hexArray[8] == 0x01
     }
 
     private func readInEarDetection(hexArray: [UInt8]) -> Bool {
@@ -1147,9 +1147,9 @@ class NothingServiceImpl : NothingService {
             
         }
         
-        log.debug("Current request: \(self.getCurrentRequest()?.command.rawValue ?? 0), executed op: \(executedOperationID)")
+        log.debug("Current request: \(currentRequest?.operationID ?? 0), executed op: \(executedOperationID)")
         if let currentRequest = currentRequest {
-            if currentRequest.operationID == executedOperationID as UInt8 {
+            if currentRequest.operationID == executedOperationID {
                 currentRequest.completion(.success(()))
             }
         }
