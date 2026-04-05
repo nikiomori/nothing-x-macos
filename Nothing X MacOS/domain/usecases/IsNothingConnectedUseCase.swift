@@ -19,7 +19,7 @@ class IsNothingConnectedUseCase : IsNothingConnectedUseCaseProtocol {
         return nothingService.isNothingConnected()
     }
     
-    func isNothingConnected() -> BluetoothDeviceEntity? {
-        return nothingService.isNothingConnected()
+    func connectedNothingDevice() -> BluetoothDeviceEntity? {
+        return nothingService.connectedNothingDevice()
     }
 }

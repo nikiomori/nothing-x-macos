@@ -176,7 +176,7 @@ class DiscoverStartedViewViewModel : ObservableObject {
             viewState = .connecting
         }
       
-        let connectedDevice: BluetoothDeviceEntity? = isNothingConnectedUseCase.isNothingConnected()
+        let connectedDevice = isNothingConnectedUseCase.connectedNothingDevice()
         
         if let discoveredDevice = discoveredDevice {
             if let connectedDevice = connectedDevice {
