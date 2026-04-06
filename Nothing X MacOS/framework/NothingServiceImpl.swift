@@ -372,10 +372,10 @@ class NothingServiceImpl : NothingService {
         
     }
     
-    func isNothingConnected() -> BluetoothDeviceEntity? {
+    func connectedNothingDevice() -> BluetoothDeviceEntity? {
         return nothingDevice?.bluetoothDetails
     }
-    
+
     func isNothingConnected() -> Bool {
         return bluetoothManager.isDeviceConnected()
     }
@@ -612,21 +612,25 @@ class NothingServiceImpl : NothingService {
             queueSemaphore.signal()
             return
         }
-        
+
         // Get the next request from the queue
         var request = requestQueue.removeFirst()
         currentRequest = request
         log.debug("Queue: processing request \(request.operationID)")
         isProcessing = true
-        queueSemaphore.signal()
-        
-        // Set a timeout for the request
         let requestID = request.id
+        queueSemaphore.signal()
+
+        // Set a timeout for the request
         let requestTimeout = DispatchTime.now() + request.requestTimeout
         DispatchQueue.global().asyncAfter(deadline: requestTimeout) {
             // Only handle timeout if this request is still the current one
             // (stale timeouts from already-completed requests must be ignored)
-            guard self.isProcessing, self.currentRequest?.id == requestID else { return }
+            self.queueSemaphore.wait()
+            guard self.isProcessing, self.currentRequest?.id == requestID else {
+                self.queueSemaphore.signal()
+                return
+            }
 
             self.log.warning("Request \(request.command) timed out (attempt \(request.retryCount + 1)/\(request.maxRetries + 1))")
             // Increment the retry count
@@ -635,27 +639,28 @@ class NothingServiceImpl : NothingService {
             // Check if the retry count exceeds the maximum allowed
             if request.retryCount <= request.maxRetries {
                 // Re-add the request to the queue
-                self.queueSemaphore.wait()
-                self.requestQueue.append(request) // Re-add the request
+                self.requestQueue.append(request)
+                self.isProcessing = false
                 self.queueSemaphore.signal()
 
                 // Call the completion handler with a timeout error
                 request.completion(.failure(DeviceError.timeoutError("Request timed out.")))
-                self.isProcessing = false
 
                 // Process the next request
                 self.processNextRequest()
             } else {
                 // Handle the case where the maximum retries have been reached
+                self.isProcessing = false
+                self.queueSemaphore.signal()
+
                 self.log.error("Maximum retries reached for request \(request.command)")
                 request.completion(.failure(DeviceError.timeoutError("Maximum retries reached.")))
-                self.isProcessing = false
 
                 // Process the next request
                 self.processNextRequest()
             }
         }
-        
+
         // Send the command and handle the response
         send(command: request.command.rawValue, operationID: request.operationID, payload: request.payload)
     }
@@ -668,13 +673,14 @@ class NothingServiceImpl : NothingService {
 
         let retries = maxRetries ?? self.maxRetries
         let request = Request(command: command, operationID: operationID, payload: payload, completion: completion, requestTimeout: requestTimeoutInSeconds, responseTimeout: responseTimeoutInSeconds, maxRetries: retries)
-        
+
         queueSemaphore.wait()
-        requestQueue.append(request) // Append the request to the queue
+        requestQueue.append(request)
+        let shouldStartProcessing = !isProcessing
         queueSemaphore.signal()
-        
+
         // Start processing if not already processing
-        if !isProcessing {
+        if shouldStartProcessing {
             processNextRequest()
         }
     }

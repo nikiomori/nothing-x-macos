@@ -11,7 +11,7 @@ protocol IsNothingConnectedUseCaseProtocol {
     
     
     func isNothingConnected() -> Bool
-    
-    func isNothingConnected() -> BluetoothDeviceEntity?
+
+    func connectedNothingDevice() -> BluetoothDeviceEntity?
     
 }
