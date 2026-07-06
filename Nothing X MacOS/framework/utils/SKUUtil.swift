@@ -157,12 +157,14 @@ func skuFromSerial(serial: String) -> SKU {
     }
     
     if headSerial == "MA" {
+        // Year-based heuristic only — the READ_SERIAL_NUMBER handler
+        // cross-checks the result against the advertised device name
         let year = String(serial.prefix(8).suffix(2))
         if year == "22" || year == "23" {
             // Ear (stick)
             return SKU.EAR_STICK_1
-        } else if year == "24" {
-            // Ear (open) TODO: Find a better way to identify both
+        } else {
+            // Ear (open)
             return SKU.FLAFFY_WHITE
         }
     } else if headSerial == "SH" || headSerial == "13" {
@@ -175,29 +177,42 @@ func skuFromSerial(serial: String) -> SKU {
 }
 
 func codenameFromDeviceName(name: String) -> Codenames {
-    let lowered = name.lowercased()
+    let lowered = name.lowercased().trimmingCharacters(in: .whitespaces)
     if lowered.contains("ear (1)") {
         return .ONE
-    } else if lowered.contains("ear stick") {
+    } else if lowered.contains("ear (stick)") || lowered.contains("ear stick") {
         return .STICKS
-    } else if lowered.contains("ear (2s)") {
-        return .CLEFFA
     } else if lowered.contains("ear (2)") {
         return .TWO
     } else if lowered.contains("ear (a)") {
-        return .CORSOLA
+        return .CLEFFA
     } else if lowered.contains("ear (3)") {
         return .EAR3
     } else if lowered.contains("ear (open)") {
         return .FLAFFY
-    } else if lowered.contains("cmf buds 2 plus") || lowered.contains("buds 2 plus") {
+    } else if lowered.contains("buds 2 plus") {
         return .GLIGAR
-    } else if lowered.contains("cmf buds 2a") || lowered.contains("buds 2a") {
+    } else if lowered.contains("buds 2a") {
         return .HOOTHOOT
-    } else if lowered.contains("cmf buds 2") || lowered.contains("buds 2") {
+    } else if lowered.contains("buds 2") {
         return .GIRAFARIG
+    } else if lowered.contains("buds pro 2") {
+        return .ESPEON
+    } else if lowered.contains("buds pro") {
+        return .CORSOLA
+    } else if lowered.contains("cmf buds") {
+        return .DONPHAN
+    } else if lowered.contains("neckband pro") {
+        return .CROBAT
     } else if lowered.contains("headphone (1)") || lowered.contains("headphone(1)") {
         return .ELEKID
+    } else if lowered.contains("headphone (a)") || lowered.contains("headphone(a)") {
+        return .HEADPHONE_A
+    } else if lowered.contains("headphone pro") {
+        return .HEADPHONE_PRO
+    } else if lowered == "nothing ear" || lowered == "ear" {
+        // Nothing Ear (2024) is marketed as just "Nothing Ear"
+        return .TWOS
     }
     return .UNKNOWN
 }

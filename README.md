@@ -7,10 +7,12 @@ An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the N
 **Nothing**
 - Ear (1), Ear (2), Ear (2024), Ear (3)
 - Ear (a), Ear (stick), Ear (open)
-- Headphone (1)
+- Headphone (1), Headphone (a) *(experimental)*
 
 **CMF by Nothing**
+- Buds, Buds Pro, Buds Pro 2
 - Buds 2, Buds 2 Plus, Buds 2a
+- Neckband Pro, Headphone Pro *(experimental)*
 
 ## Features
 

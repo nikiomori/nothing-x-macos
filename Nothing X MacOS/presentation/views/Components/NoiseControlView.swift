@@ -17,119 +17,73 @@ struct NoiseControlView<SelectedANC: Hashable>: View {
     @State private var selectedIndex: Int = 0 // Track the selected index
        private let buttonWidth: CGFloat = 60 // Width of each button
        private let buttonCount: CGFloat = CGFloat(NoiseControlOptions.allCases.count)
-    
-    @State private var noiseDetailsButtonOffset: CGFloat = 24
-    @State private var noiseDetailsText: String = "High"
-    
-    
-    
+
+    private let detailBarWidth: CGFloat = 60
+
+    private var ancDetailOptions: [ANC] {
+        viewModel.supportsAdaptiveANC ? ANC.levels + [.ADAPTIVE] : ANC.levels
+    }
+
+    private var ancDetailOffset: CGFloat {
+        let options = ancDetailOptions
+        guard let index = options.firstIndex(of: viewModel.ancDetail) else { return 0 }
+        let slotWidth = detailBarWidth / CGFloat(options.count)
+        return -detailBarWidth / 2 + slotWidth * (CGFloat(index) + 0.5)
+    }
+
+
+
     var body: some View {
         // NOISE CONTROL
 
         VStack(alignment: .center) {
-            
+
             if viewModel.anc == .anc {
-                
+
                 HStack(alignment: .center) {
-                    
-                    
+
+
                     ZStack {
                         RoundedRectangle(cornerRadius: 100)
                             .fill(Color(#colorLiteral(red: 0.10980392247438431, green: 0.11372549086809158, blue: 0.12156862765550613, alpha: 1)))
-                            .frame(width: 60, height: 12)
-                        
-                        
-                        HStack {
-                            
-                            ZStack(alignment: .leading) {
-                                
+                            .frame(width: detailBarWidth, height: 12)
+
+
+                        HStack(spacing: 0) {
+
+                            ForEach(ancDetailOptions, id: \.self) { option in
                                 Rectangle()
                                     .fill(Color(#colorLiteral(red: 0.10980392247438431, green: 0.11372549086809158, blue: 0.12156862765550613, alpha: 1)))
-                                    .frame(width: 20, height: 11)
-                                    .padding(.leading, 4)
+                                    .frame(width: detailBarWidth / CGFloat(ancDetailOptions.count), height: 11)
+                                    .overlay(
+                                        Circle()
+                                            .fill(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
+                                            .frame(width: 3, height: 3)
+                                    )
+                                    .contentShape(Rectangle())
                                     .onTapGesture {
                                         withAnimation {
-                                            noiseDetailsButtonOffset = -24
-                                            noiseDetailsText = "Low"
-                                            viewModel.switchANC(anc: .ON_LOW)
-                                        }
-                                    }
-                                
-                                
-                                
-                                // Set a larger frame for the button
-                                Circle()
-                                    .fill(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
-                                    .frame(width: 3, height: 3)
-                                    .padding(.leading, 4)
-                                    .onTapGesture {
-                                        withAnimation {
-                                            noiseDetailsButtonOffset = -24
-                                            noiseDetailsText = "Low"
-                                            viewModel.switchANC(anc: .ON_LOW)
+                                            viewModel.switchANC(anc: option)
                                         }
                                     }
                             }
-                            
-                            
-                            
-                            Spacer()
-                            
-                            //                        Circle()
-                            //                            .fill(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
-                            //                            .frame(width: 3, height: 3)
-                            //
-                            //
-                            //
-                            //                        Spacer()
-                            
-                            ZStack(alignment: .trailing) {
-                                
-                                Rectangle()
-                                    .fill(Color(#colorLiteral(red: 0.10980392247438431, green: 0.11372549086809158, blue: 0.12156862765550613, alpha: 1)))
-                                    .frame(width: 20, height: 11)
-                                    .padding(.trailing, 4)
-                                    .onTapGesture {
-                                        withAnimation {
-                                            noiseDetailsButtonOffset = 24
-                                            noiseDetailsText = "High"
-                                            viewModel.switchANC(anc: .ON_HIGH)
-                                        }
-                                    }
-                                
-                                
-                                
-                                // Set a larger frame for the button
-                                Circle()
-                                    .fill(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
-                                    .frame(width: 3, height: 3)
-                                    .padding(.trailing, 4)
-                                    .onTapGesture {
-                                        withAnimation {
-                                            noiseDetailsButtonOffset = 24
-                                            noiseDetailsText = "High"
-                                            viewModel.switchANC(anc: .ON_HIGH)
-                                        }
-                                    }
-                            }
-                            
-                            
-                            
+
                         }
-                        
-                        .frame(width: 60, height: 12)
-                        
-                        
+
+                        .frame(width: detailBarWidth, height: 12)
+
+
                         Circle()
                             .fill(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
                             .frame(width: 8, height: 8)
-                            .offset(x: noiseDetailsButtonOffset, y: 0)
-                            .animation(.bouncy(duration: 0.3), value: noiseDetailsButtonOffset)
-                        
+                            .offset(x: ancDetailOffset, y: 0)
+                            .animation(.bouncy(duration: 0.3), value: ancDetailOffset)
+                            .allowsHitTesting(false)
+
                     }
-                    
-                    
-                    Text(noiseDetailsText)
+
+
+                    Text(viewModel.ancDetail.displayName)
                         .font(.system(size: 10, weight: .light))
                         .foregroundColor(Color(#colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)))
                         .textCase(.uppercase)

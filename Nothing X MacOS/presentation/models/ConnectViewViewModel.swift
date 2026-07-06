@@ -43,6 +43,14 @@ class ConnectViewViewModel : ObservableObject {
             }
         })
 
+        observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
+            withAnimation {
+                self.isFailedToConnectPresented = true
+                self.isLoading = false
+            }
+        })
+
         observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(Notifications.REQUEST_RETRY.rawValue), object: nil, queue: .main) { [weak self] notification in
             guard let self else { return }
             self.connect()
@@ -68,6 +76,21 @@ class ConnectViewViewModel : ObservableObject {
     func connect() {
         isLoading = true
         let devices = nothingRepository.getSaved()
+
+        // Prefer whatever macOS is connected to right now: blindly taking the
+        // first saved device pages a powered-off one and times out while the
+        // device the user actually wants sits connected next to it
+        if let target = devices.first(where: { nothingService.isSystemConnected(address: $0.bluetoothDetails.mac) }) {
+            nothingService.connectToNothing(device: target.bluetoothDetails)
+            return
+        }
+
+        // A paired Nothing device that was never set up in the app
+        if let connected = nothingService.systemConnectedNothingDevice() {
+            nothingService.connectToNothing(device: connected)
+            return
+        }
+
         guard !devices.isEmpty else {
             isLoading = false
             return

@@ -46,7 +46,9 @@ class NothingServiceImpl : NothingService {
     private var isProcessing = false
 
     private var nothingDevice: NothingDeviceFDTO? = nil
-    
+    // Suppresses auto-reconnect after the user disconnected on purpose
+    private var userInitiatedDisconnect = false
+
     private init() {
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CONNECTED.rawValue), object: nil, queue: .main) { notification in
@@ -106,15 +108,63 @@ class NothingServiceImpl : NothingService {
         
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FOUND.rawValue), object: nil, queue: .main) { notification in
-            
+
            self.log.info("Found device")
             if let bluetoothDevice = notification.object as? BluetoothDeviceEntity {
-                
+
                 NotificationCenter.default.post(name: Notification.Name(DataNotifications.FOUND.rawValue), object: bluetoothDevice, userInfo: nil)
-                
+
             }
         }
-        
+
+        // A Nothing device connected at the system level (after wake, out of
+        // the case, back in range) — reattach the RFCOMM channel automatically.
+        // Recognized-but-unsaved devices are picked up too, so a device paired
+        // through macOS settings gets set up on its first connection
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.SYSTEM_DEVICE_CONNECTED.rawValue), object: nil, queue: .main) { notification in
+            guard let device = notification.object as? BluetoothDeviceEntity else { return }
+            guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+
+            let savedDevices = NothingRepositoryImpl.shared.getSaved()
+            let isSaved = savedDevices.contains(where: { $0.bluetoothDetails.mac == device.mac })
+            let isNothing = codenameFromDeviceName(name: device.name) != .UNKNOWN
+            guard isSaved || isNothing else { return }
+
+            self.log.info("Nothing device appeared in system, connecting: \(device.name)")
+            self.connectToNothing(address: device.mac)
+        }
+
+        // Requests queued before a disconnect can never complete — drop them so
+        // they don't burn through retries against a dead channel after reconnect
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
+            self.flushRequestQueue()
+        }
+
+        // CBCentralManager reports the power state a moment after launch, later
+        // than the UI's first bluetooth check — attach to whatever Nothing
+        // device the system already holds once Bluetooth is confirmed on
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.BLUETOOTH_ON.rawValue), object: nil, queue: .main) { _ in
+            guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Bluetooth is on, attaching to connected device: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
+        }
+
+    }
+
+    private func flushRequestQueue() {
+        queueSemaphore.wait()
+        let dropped = requestQueue.count
+        requestQueue.removeAll()
+        currentRequest = nil
+        isProcessing = false
+        queueSemaphore.signal()
+
+        if dropped > 0 {
+            log.info("Dropped \(dropped) pending requests after channel close")
+        }
     }
     
 
@@ -350,10 +400,12 @@ class NothingServiceImpl : NothingService {
     }
     
     func connectToNothing(device: BluetoothDeviceEntity) {
+        userInitiatedDisconnect = false
         bluetoothManager.connectToDevice(address: device.mac, channelID: device.channelId)
     }
-    
+
     func disconnect() {
+        userInitiatedDisconnect = true
         bluetoothManager.disconnectDevice()
         self.nothingDevice = nil
     }
@@ -381,14 +433,24 @@ class NothingServiceImpl : NothingService {
     }
     
     func connectToNothing(address: String) {
+        userInitiatedDisconnect = false
         bluetoothManager.connectToDevice(address: address, channelID: 15)
+    }
+
+    func isSystemConnected(address: String) -> Bool {
+        return bluetoothManager.isSystemConnected(address: address)
+    }
+
+    // A paired Nothing/CMF device macOS is connected to right now,
+    // whether or not it has been set up in the app
+    func systemConnectedNothingDevice() -> BluetoothDeviceEntity? {
+        return bluetoothManager.getPaired(withClass: Int(classOfNothing)).first(where: { $0.isConnected })
     }
     
     func fetchData() {
         
         log.info("Fetching data...")
 
-        #warning("there is a change that device gets disconnected during transfer but it is low since it takes less than a second to fetch the data will fix it in the future")
         log.debug("Connected: \(isNothingConnected()), device exists: \(nothingDevice != nil)")
         
         if isNothingConnected() && nothingDevice != nil {
@@ -560,8 +622,6 @@ class NothingServiceImpl : NothingService {
         }
     }
 
-    #warning("low latency mode switch is not implemented")
-    
     private func send(command: UInt16, operationID: UInt8, payload: [UInt8] = []) {
         var header: [UInt8] = [0x55, 0x60, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
         
@@ -686,12 +746,22 @@ class NothingServiceImpl : NothingService {
 
         // Read the number of connected devices
         guard hexString.count > 8 else { return }
+        guard let device = nothingDevice else { return }
         let connectedDevices = Int(hexString[8])
-        
-        nothingDevice?.isCaseConnected = false
-        nothingDevice?.isLeftConnected = false
-        nothingDevice?.isRightConnected = false
-        
+
+        // Parse into locals first: every FDTO property assignment publishes an
+        // update, and resetting the connected flags in place made the UI
+        // flicker through a disconnected state on every battery report
+        var leftBattery = device.leftBattery
+        var rightBattery = device.rightBattery
+        var caseBattery = device.caseBattery
+        var isLeftCharging = device.isLeftCharging
+        var isRightCharging = device.isRightCharging
+        var isCaseCharging = device.isCaseCharging
+        var isLeftConnected = false
+        var isRightConnected = false
+        var isCaseConnected = false
+
         // Process each connected device
         for i in 0..<connectedDevices {
             let deviceIdIndex = 9 + (i * 2)
@@ -701,27 +771,46 @@ class NothingServiceImpl : NothingService {
             let batteryData = hexString[batteryDataIndex]
             let batteryLevel = Int(batteryData & BATTERY_MASK)
             let isCharging = (batteryData & RECHARGING_MASK) == RECHARGING_MASK
-            
+
             switch deviceId {
             case 0x02: // Left device
-                nothingDevice?.leftBattery = batteryLevel
-                nothingDevice?.isLeftCharging = isCharging
-                nothingDevice?.isLeftConnected = true
+                leftBattery = batteryLevel
+                isLeftCharging = isCharging
+                isLeftConnected = true
             case 0x03: // Right device
-                nothingDevice?.rightBattery = batteryLevel
-                nothingDevice?.isRightCharging = isCharging
-                nothingDevice?.isRightConnected = true
+                rightBattery = batteryLevel
+                isRightCharging = isCharging
+                isRightConnected = true
             case 0x04: // Case device
-                nothingDevice?.caseBattery = batteryLevel
-                nothingDevice?.isCaseCharging = isCharging
-                nothingDevice?.isCaseConnected = true
+                caseBattery = batteryLevel
+                isCaseCharging = isCharging
+                isCaseConnected = true
             default:
-                // Handle unknown device ID if necessary
-                break
+                // Single-unit devices report one battery for the whole unit
+                // under a different id (Headphone (1) uses 0x06)
+                if connectedDevices == 1 {
+                    leftBattery = batteryLevel
+                    isLeftCharging = isCharging
+                    isLeftConnected = true
+                    rightBattery = batteryLevel
+                    isRightCharging = isCharging
+                    isRightConnected = true
+                }
             }
         }
-        
-        log.debug("Battery L:\(nothingDevice?.leftBattery ?? -1)% R:\(nothingDevice?.rightBattery ?? -1)% C:\(nothingDevice?.caseBattery ?? -1)%")
+
+        // Only assign what changed so observers never see intermediate states
+        if device.leftBattery != leftBattery { device.leftBattery = leftBattery }
+        if device.rightBattery != rightBattery { device.rightBattery = rightBattery }
+        if device.caseBattery != caseBattery { device.caseBattery = caseBattery }
+        if device.isLeftCharging != isLeftCharging { device.isLeftCharging = isLeftCharging }
+        if device.isRightCharging != isRightCharging { device.isRightCharging = isRightCharging }
+        if device.isCaseCharging != isCaseCharging { device.isCaseCharging = isCaseCharging }
+        if device.isLeftConnected != isLeftConnected { device.isLeftConnected = isLeftConnected }
+        if device.isRightConnected != isRightConnected { device.isRightConnected = isRightConnected }
+        if device.isCaseConnected != isCaseConnected { device.isCaseConnected = isCaseConnected }
+
+        log.debug("Battery L:\(device.leftBattery)% R:\(device.rightBattery)% C:\(device.caseBattery)%")
     }
     
     private func readGestures(hexArray: [UInt8]) -> [(deviceType: DeviceType, gestureType: GestureType, action: UInt8)] {
@@ -1061,16 +1150,26 @@ class NothingServiceImpl : NothingService {
             if (!serial.isEmpty) {
                 nothingDevice?.serial = serial
                 let sku = skuFromSerial(serial: serial)
+                let nameCodename = codenameFromDeviceName(name: nothingDevice?.name ?? "")
                 if sku != .UNKNOWN {
-                    nothingDevice?.sku = sku
-                    nothingDevice?.codename = codenameFromSKU(sku: sku)
-                } else if nothingDevice?.codename == .UNKNOWN, let name = nothingDevice?.name {
-                    // Fallback: detect from device name
-                    let detected = codenameFromDeviceName(name: name)
-                    if detected != .UNKNOWN {
-                        nothingDevice?.codename = detected
-                        log.info("Codename detected from name fallback: \(detected)")
+                    var codename = codenameFromSKU(sku: sku)
+                    // The MA-prefix serial heuristic tells Ear (stick) and
+                    // Ear (open) apart only by production year — trust the
+                    // advertised device name when it disagrees
+                    if (codename == .STICKS || codename == .FLAFFY),
+                       nameCodename == .STICKS || nameCodename == .FLAFFY,
+                       nameCodename != codename {
+                        log.info("Serial heuristic said \(codename), device name says \(nameCodename) — using the name")
+                        codename = nameCodename
+                        nothingDevice?.sku = nameCodename == .FLAFFY ? .FLAFFY_WHITE : .EAR_STICK_1
+                    } else {
+                        nothingDevice?.sku = sku
                     }
+                    nothingDevice?.codename = codename
+                } else if nothingDevice?.codename == .UNKNOWN, nameCodename != .UNKNOWN {
+                    // Fallback: detect from device name
+                    nothingDevice?.codename = nameCodename
+                    log.info("Codename detected from name fallback: \(nameCodename)")
                 }
             }
 

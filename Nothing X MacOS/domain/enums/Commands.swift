@@ -12,7 +12,6 @@ enum Commands : UInt16 {
     case GET_FIRMWARE = 0x42C0
     case GET_ANC = 0x1EC0
     case GET_EQ = 0x1FC0
-    case GET_LISTENING_MODE = 0x50C0
     case GET_IN_EAR_STATUS = 0x0EC0
     case GET_LATENCY = 0x41C0
     case GET_GESTURES = 0x18C0

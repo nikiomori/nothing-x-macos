@@ -117,7 +117,15 @@ class DiscoverStartedViewViewModel : ObservableObject {
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil, queue: .main) {
             notification in
-            
+
+            self.viewState = .failed_to_connect
+        }
+
+        // An RFCOMM failure is a failed connection too — without this the
+        // view stays in the connecting state forever
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) {
+            notification in
+
             self.viewState = .failed_to_connect
         }
 

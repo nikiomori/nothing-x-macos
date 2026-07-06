@@ -17,9 +17,7 @@ class BatteryIndicatorViewViewModel : ObservableObject {
         NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REPOSITORY_DATA_UPDATED.rawValue), object: nil, queue: .main) { notification in
             
             if let device = notification.object as? NothingDeviceEntity {
-                
-                #warning("gotta fix the flickering")
-                
+
                 if self.leftBattery != device.leftBattery {
                     self.leftBattery = device.leftBattery
                 }
