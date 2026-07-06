@@ -723,12 +723,22 @@ class NothingServiceImpl : NothingService {
 
         // Read the number of connected devices
         guard hexString.count > 8 else { return }
+        guard let device = nothingDevice else { return }
         let connectedDevices = Int(hexString[8])
-        
-        nothingDevice?.isCaseConnected = false
-        nothingDevice?.isLeftConnected = false
-        nothingDevice?.isRightConnected = false
-        
+
+        // Parse into locals first: every FDTO property assignment publishes an
+        // update, and resetting the connected flags in place made the UI
+        // flicker through a disconnected state on every battery report
+        var leftBattery = device.leftBattery
+        var rightBattery = device.rightBattery
+        var caseBattery = device.caseBattery
+        var isLeftCharging = device.isLeftCharging
+        var isRightCharging = device.isRightCharging
+        var isCaseCharging = device.isCaseCharging
+        var isLeftConnected = false
+        var isRightConnected = false
+        var isCaseConnected = false
+
         // Process each connected device
         for i in 0..<connectedDevices {
             let deviceIdIndex = 9 + (i * 2)
@@ -738,34 +748,45 @@ class NothingServiceImpl : NothingService {
             let batteryData = hexString[batteryDataIndex]
             let batteryLevel = Int(batteryData & BATTERY_MASK)
             let isCharging = (batteryData & RECHARGING_MASK) == RECHARGING_MASK
-            
+
             switch deviceId {
             case 0x01: // Single-unit device (e.g. Headphone (1)) — one battery, no case
-                nothingDevice?.leftBattery = batteryLevel
-                nothingDevice?.isLeftCharging = isCharging
-                nothingDevice?.isLeftConnected = true
-                nothingDevice?.rightBattery = batteryLevel
-                nothingDevice?.isRightCharging = isCharging
-                nothingDevice?.isRightConnected = true
+                leftBattery = batteryLevel
+                isLeftCharging = isCharging
+                isLeftConnected = true
+                rightBattery = batteryLevel
+                isRightCharging = isCharging
+                isRightConnected = true
             case 0x02: // Left device
-                nothingDevice?.leftBattery = batteryLevel
-                nothingDevice?.isLeftCharging = isCharging
-                nothingDevice?.isLeftConnected = true
+                leftBattery = batteryLevel
+                isLeftCharging = isCharging
+                isLeftConnected = true
             case 0x03: // Right device
-                nothingDevice?.rightBattery = batteryLevel
-                nothingDevice?.isRightCharging = isCharging
-                nothingDevice?.isRightConnected = true
+                rightBattery = batteryLevel
+                isRightCharging = isCharging
+                isRightConnected = true
             case 0x04: // Case device
-                nothingDevice?.caseBattery = batteryLevel
-                nothingDevice?.isCaseCharging = isCharging
-                nothingDevice?.isCaseConnected = true
+                caseBattery = batteryLevel
+                isCaseCharging = isCharging
+                isCaseConnected = true
             default:
                 // Handle unknown device ID if necessary
                 break
             }
         }
-        
-        log.debug("Battery L:\(nothingDevice?.leftBattery ?? -1)% R:\(nothingDevice?.rightBattery ?? -1)% C:\(nothingDevice?.caseBattery ?? -1)%")
+
+        // Only assign what changed so observers never see intermediate states
+        if device.leftBattery != leftBattery { device.leftBattery = leftBattery }
+        if device.rightBattery != rightBattery { device.rightBattery = rightBattery }
+        if device.caseBattery != caseBattery { device.caseBattery = caseBattery }
+        if device.isLeftCharging != isLeftCharging { device.isLeftCharging = isLeftCharging }
+        if device.isRightCharging != isRightCharging { device.isRightCharging = isRightCharging }
+        if device.isCaseCharging != isCaseCharging { device.isCaseCharging = isCaseCharging }
+        if device.isLeftConnected != isLeftConnected { device.isLeftConnected = isLeftConnected }
+        if device.isRightConnected != isRightConnected { device.isRightConnected = isRightConnected }
+        if device.isCaseConnected != isCaseConnected { device.isCaseConnected = isCaseConnected }
+
+        log.debug("Battery L:\(device.leftBattery)% R:\(device.rightBattery)% C:\(device.caseBattery)%")
     }
     
     private func readGestures(hexArray: [UInt8]) -> [(deviceType: DeviceType, gestureType: GestureType, action: UInt8)] {
