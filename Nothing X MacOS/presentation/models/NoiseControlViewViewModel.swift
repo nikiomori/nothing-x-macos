@@ -49,6 +49,9 @@ class NoiseControlViewViewModel : ObservableObject {
             }
         }
 
+        // Ask for the current state so a freshly opened popover doesn't show
+        // the default selection until the next device event
+        NotificationCenter.default.post(name: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil)
 
     }
 

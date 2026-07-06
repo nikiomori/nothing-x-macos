@@ -165,6 +165,15 @@ class NothingServiceImpl : NothingService {
             }
         }
 
+        // Freshly created view models ask for the current state: the menu bar
+        // popover recreates its views on every open and they would otherwise
+        // show defaults until the next device event
+        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil, queue: .main) { _ in
+            if let device = self.nothingDevice {
+                NotificationCenter.default.post(name: Notification.Name(DataNotifications.DATA_UPDATED.rawValue), object: device)
+            }
+        }
+
         // Standing self-heal: a device can refuse the control channel for a
         // while (e.g. Nothing X on the phone holds it) and free it later, and
         // one-shot attach attempts can misfire — keep trying while a Nothing
