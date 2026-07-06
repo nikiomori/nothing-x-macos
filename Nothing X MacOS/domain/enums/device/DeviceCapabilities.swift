@@ -14,6 +14,7 @@ struct DeviceCapabilities {
     let supportsEarTipTest: Bool
     let supportsCaseLED: Bool
     let supportsANCCycleConfig: Bool
+    let supportsAdaptiveANC: Bool
     let supportsDoubleTap: Bool
     let supportsDoubleTapAndHold: Bool
 
@@ -27,6 +28,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: true,
                 supportsANCCycleConfig: false,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -38,6 +40,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -49,6 +52,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -60,6 +64,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -71,6 +76,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -82,6 +88,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: false
             )
@@ -93,6 +100,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -104,6 +112,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: false,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -115,6 +124,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: false,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -126,6 +136,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: false,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
@@ -137,6 +148,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -148,6 +160,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -159,6 +172,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -170,6 +184,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -181,6 +196,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
@@ -192,6 +208,7 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: false,
+                supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
