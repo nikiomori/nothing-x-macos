@@ -15,8 +15,32 @@ struct BatteryIndicatorView: View {
     
     var body: some View {
         HStack(spacing: 10) {
+
+            // Single-unit devices (over-ear, neckband) have one battery
+            if viewModel.isSingleUnit {
+
+                if viewModel.isLeftConnected {
+                    ZStack {
+
+                        ProgressView("\(Int(viewModel.leftBattery))%", value: Float(viewModel.leftBattery), total: 100)
+                            .progressViewStyle(NothingProgressViewStyle())
+                        if viewModel.isLeftCharging {
+                            Capsule()
+                                .fill(Color.black)
+                                .frame(width: 9, height: 12)
+                                .padding(.top, 14)
+                            Image(systemName: "bolt.fill")
+                                .foregroundColor(Color(#colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)))
+                                .scaleEffect(0.7)
+                                .padding(.top, 14)
+                        }
+                    }
+                }
+
+            } else {
+
             // Left Battery
-            
+
             if viewModel.isLeftConnected {
                 
                 ZStack {
@@ -61,9 +85,9 @@ struct BatteryIndicatorView: View {
             }
       
             if viewModel.isRightConnected {
-                
+
                 ZStack {
-                    
+
                     // Right Battery
                     ProgressView("\(Int(viewModel.rightBattery))% R", value: Float(viewModel.rightBattery), total: 100)
                         .progressViewStyle(NothingProgressViewStyle())
@@ -79,7 +103,9 @@ struct BatteryIndicatorView: View {
                             .padding(.top, 14)
                     }
                 }
-                
+
+            }
+
             }
         }
         .frame(width: 180, height: 40)

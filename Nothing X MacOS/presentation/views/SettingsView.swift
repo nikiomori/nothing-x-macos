@@ -133,16 +133,18 @@ struct SettingsView: View {
                                     .foregroundColor(Color(#colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)))
                                     .textCase(.uppercase)
                                     .padding(.top, 16)
-                                // IN-EAR DETECT
-                                
+                                // IN-EAR / WEAR DETECT
+
                                 VStack(alignment: .leading) {
-                                    Toggle("In-ear detection", isOn: $viewModel.inEarSwitch)
+                                    Toggle(viewModel.isSingleUnit ? "Wear detection" : "In-ear detection", isOn: $viewModel.inEarSwitch)
                                         .onChange(of: viewModel.inEarSwitch) { newValue in
                                             guard !viewModel.isUpdatingFromDevice else { return }
                                             viewModel.switchInEarDetection(mode: newValue)
                                         }
-                                    
-                                    Text("Automatically play audio when earbuds are in and pause when removed.")
+
+                                    Text(viewModel.isSingleUnit
+                                         ? "Automatically play audio when the headphones are on and pause when taken off."
+                                         : "Automatically play audio when earbuds are in and pause when removed.")
                                         .font(.system(size: 10, weight: .light))
                                         .foregroundColor(Color(#colorLiteral(red: 0.501960814, green: 0.501960814, blue: 0.501960814, alpha: 1)))
                                         .padding(.trailing, 64)
@@ -198,10 +200,12 @@ struct SettingsView: View {
                                         .padding(.bottom, 4)
                                 }
 
-                                // Find My Earbuds
-                                NavigationLink("FIND MY EARBUDS", value: Destination.findMyBuds)
-                                    .buttonStyle(FindMyTransparentButton())
-                                    .padding(.bottom, 8)
+                                // Find My Earbuds (not applicable to over-ear devices)
+                                if !viewModel.isSingleUnit {
+                                    NavigationLink("FIND MY EARBUDS", value: Destination.findMyBuds)
+                                        .buttonStyle(FindMyTransparentButton())
+                                        .padding(.bottom, 8)
+                                }
                                 
                                 Rectangle()
                                     .fill(Color(#colorLiteral(red: 0.07009194046, green: 0.07611755282, blue: 0.08425947279, alpha: 1))) // Set the color of the line
@@ -313,6 +317,7 @@ struct SettingsView: View {
                     viewModel.supportsPersonalizedANC = caps.supportsPersonalizedANC
                     viewModel.supportsEarTipTest = caps.supportsEarTipTest
                     viewModel.supportsCaseLED = caps.supportsCaseLED
+                    viewModel.isSingleUnit = caps.isSingleUnit
                 }
             }
             if viewModel.shouldShowForgetDialog {

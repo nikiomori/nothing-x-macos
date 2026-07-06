@@ -9,9 +9,15 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject var store: Store
-//    @EnvironmentObject var viewModel: MainViewViewModel
-    
-    
+    @EnvironmentObject var mainViewModel: MainViewViewModel
+
+    // Gesture controls are laid out per earbud side; over-ear devices use a
+    // different control scheme that is not mapped yet
+    private var isSingleUnit: Bool {
+        guard let device = mainViewModel.nothingDevice else { return false }
+        return DeviceCapabilities.capabilities(for: device.codename).isSingleUnit
+    }
+
     var body: some View {
         ZStack {
             
@@ -61,18 +67,20 @@ struct HomeView: View {
                                 
                             
                         //CONTROLS
-                        if #available(macOS 14.0, *) {
-                            NavigationLink("CONTROLS", value: Destination.controls)
-                                .buttonStyle(GreyButton())
-                                .focusable(false)
-                                .focusEffectDisabled()
-                        } else {
-                            NavigationLink("CONTROLS", value: Destination.controls)
-                                .buttonStyle(GreyButton())
-                                .focusable(false)
-                                
+                        if !isSingleUnit {
+                            if #available(macOS 14.0, *) {
+                                NavigationLink("CONTROLS", value: Destination.controls)
+                                    .buttonStyle(GreyButton())
+                                    .focusable(false)
+                                    .focusEffectDisabled()
+                            } else {
+                                NavigationLink("CONTROLS", value: Destination.controls)
+                                    .buttonStyle(GreyButton())
+                                    .focusable(false)
+
+                            }
                         }
-                        
+
                     }
                     
                     Spacer()

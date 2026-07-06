@@ -15,9 +15,14 @@ struct ConnectView: View {
     @State var bottomButtonText: String? = "Cancel"
     
     @StateObject private var viewModel = ConnectViewViewModel(nothingRepository: NothingRepositoryImpl.shared, nothingService: NothingServiceImpl.shared, bluetoothService: BluetoothServiceImpl())
-    
+
     @EnvironmentObject var mainViewModel: MainViewViewModel
-    
+
+    private var isSingleUnitDevice: Bool {
+        guard let first = viewModel.savedDevices.first else { return false }
+        return DeviceCapabilities.capabilities(for: first.codename).isSingleUnit
+    }
+
     var body: some View {
         
         
@@ -48,12 +53,19 @@ struct ConnectView: View {
                 }
                 
                 VStack {
-                    // Ear 1 Image
-                    Image("ear_1")
-                        .overlay(
-                            LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.8)]), startPoint: .top, endPoint: .bottom)
-                                .blendMode(.darken) // Blend mode to darken the image
-                        )
+                    // Device image
+                    if isSingleUnitDevice {
+                        Image(systemName: "headphones")
+                            .font(.system(size: 64, weight: .thin))
+                            .foregroundColor(Color(#colorLiteral(red: 0.7568627595901489, green: 0.7607843279838562, blue: 0.7686274647712708, alpha: 1)))
+                            .frame(height: 119) // matches the ear_1 image height
+                    } else {
+                        Image("ear_1")
+                            .overlay(
+                                LinearGradient(gradient: Gradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.8)]), startPoint: .top, endPoint: .bottom)
+                                    .blendMode(.darken) // Blend mode to darken the image
+                            )
+                    }
                     
                     
                     Spacer(minLength: 15)
