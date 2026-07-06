@@ -130,8 +130,13 @@ class NothingServiceImpl : NothingService {
             let isNothing = codenameFromDeviceName(name: device.name) != .UNKNOWN
             guard isSaved || isNothing else { return }
 
-            self.log.info("Nothing device appeared in system, connecting: \(device.name)")
-            self.connectToNothing(address: device.mac)
+            // RFCOMM services come up a moment after the system-level
+            // connection — connecting immediately leaves the channel open hanging
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+                self.log.info("Nothing device appeared in system, connecting: \(device.name)")
+                self.connectToNothing(address: device.mac)
+            }
         }
 
         // Requests queued before a disconnect can never complete — drop them so
@@ -156,6 +161,22 @@ class NothingServiceImpl : NothingService {
 
             if let connected = self.systemConnectedNothingDevice() {
                 self.log.info("Bluetooth is on, attaching to connected device: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
+        }
+
+        // Standing self-heal: a device can refuse the control channel for a
+        // while (e.g. Nothing X on the phone holds it) and free it later, and
+        // one-shot attach attempts can misfire — keep trying while a Nothing
+        // device is connected to the system but the app has no channel
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self,
+                  !self.userInitiatedDisconnect,
+                  !self.bluetoothManager.isPreparingForSleep,
+                  !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Periodic reattach to connected device: \(connected.name)")
                 self.connectToNothing(device: connected)
             }
         }

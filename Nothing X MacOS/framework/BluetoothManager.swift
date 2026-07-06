@@ -281,31 +281,30 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
                 }
                 self.device = device
 
-                // Open the baseband link only when macOS doesn't hold one already —
-                // opening a fresh connection over an established link can fail
-                if !device.isConnected() {
-                    var resultConnection = device.openConnection()
+                // Always open the connection, even when macOS already holds the
+                // link: besides establishing the baseband connection this
+                // registers the process as a client of it — without that, the
+                // RFCOMM open request below hangs without ever completing.
+                // On an established link this returns success immediately.
+                var resultConnection = device.openConnection()
 
-                    // A just-stopped inquiry blocks new connections for a moment,
-                    // so give it a couple of retries before giving up
-                    var attempts = 0
-                    while resultConnection != kIOReturnSuccess && attempts < 2 {
-                        Thread.sleep(forTimeInterval: 1.0)
-                        resultConnection = device.openConnection()
-                        attempts += 1
-                    }
+                // A just-stopped inquiry blocks new connections for a moment,
+                // so give it a couple of retries before giving up
+                var attempts = 0
+                while resultConnection != kIOReturnSuccess && attempts < 2 {
+                    Thread.sleep(forTimeInterval: 1.0)
+                    resultConnection = device.openConnection()
+                    attempts += 1
+                }
 
-                    guard resultConnection == kIOReturnSuccess else {
-                        self.log.error("Failed to connect to device, IOReturn: \(String(format: "0x%08x", resultConnection))")
-                        self.isConnecting = false
-                        DispatchQueue.main.async {
-                            self.device = nil
-                            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil)
-                        }
-                        return
+                guard resultConnection == kIOReturnSuccess else {
+                    self.log.error("Failed to connect to device, IOReturn: \(String(format: "0x%08x", resultConnection))")
+                    self.isConnecting = false
+                    DispatchQueue.main.async {
+                        self.device = nil
+                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil)
                     }
-                } else {
-                    self.log.info("Device already connected at system level, skipping openConnection")
+                    return
                 }
 
                 self.log.info("Connected to device")
@@ -324,23 +323,84 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
                         self.log.info("Control service resolved to RFCOMM channel \(resolvedChannel)")
                     }
 
-                    let resultRFCOMM = device.openRFCOMMChannelAsync(&self.channel, withChannelID: resolvedChannel, delegate: self)
-                    self.isConnecting = false
-
-                    if resultRFCOMM == kIOReturnSuccess {
-                        self.log.info("Opened RFCOMM channel \(resolvedChannel)")
-                        self.lastConnectedAddress = address
-                        self.lastConnectedChannelID = resolvedChannel
-                        self.reconnectAfterWake = false
-                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
-                    } else {
-                        self.log.error("Failed to open RFCOMM channel \(resolvedChannel), IOReturn: \(String(format: "0x%08x", resultRFCOMM))")
-                        self.device = nil
-                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil)
-                    }
+                    self.lastConnectedAddress = address
+                    self.lastConnectedChannelID = resolvedChannel
+                    self.reconnectAfterWake = false
+                    self.channelOpenRetries = 0
+                    self.openControlChannel(device: device, channelID: resolvedChannel)
                 }
             }
 
+    }
+
+    private var channelOpenRetries = 0
+    private var channelEstablished = false
+    private var channelOpenGeneration = 0
+
+    // openRFCOMMChannelAsync returning success only means the request was
+    // queued — the channel is usable after rfcommChannelOpenComplete fires.
+    // Success was previously declared immediately, so requests went into a
+    // channel that wasn't open yet and all of them timed out.
+    private func openControlChannel(device: IOBluetoothDevice, channelID: UInt8) {
+        let result = device.openRFCOMMChannelAsync(&channel, withChannelID: channelID, delegate: self)
+
+        if result == kIOReturnSuccess {
+            log.info("RFCOMM channel \(channelID) open requested, waiting for completion")
+
+            // The completion can hang indefinitely when the open races a fresh
+            // system-level connection — abort and retry instead of waiting forever
+            channelOpenGeneration += 1
+            let generation = channelOpenGeneration
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) { [weak self] in
+                guard let self, self.channelOpenGeneration == generation, !self.channelEstablished else { return }
+                self.log.warning("RFCOMM channel open timed out, aborting attempt")
+                self.channel?.close()
+                self.channel = nil
+                self.handleChannelOpenFailure()
+            }
+        } else {
+            log.error("Failed to request RFCOMM channel \(channelID), IOReturn: \(String(format: "0x%08x", result))")
+            handleChannelOpenFailure()
+        }
+    }
+
+    // A device that just connected to the system may not have its RFCOMM
+    // services up yet — retry a few times before giving up
+    private func handleChannelOpenFailure() {
+        if channelOpenRetries < 3, let device = self.device, device.isConnected() {
+            channelOpenRetries += 1
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self, let device = self.device, self.channel == nil, !self.channelEstablished else { return }
+                self.openControlChannel(device: device, channelID: self.lastConnectedChannelID)
+            }
+        } else {
+            isConnecting = false
+            self.device = nil
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil)
+            }
+        }
+    }
+
+    func rfcommChannelOpenComplete(_ rfcommChannel: IOBluetoothRFCOMMChannel!, status error: IOReturn) {
+
+        if error == kIOReturnSuccess {
+            log.info("RFCOMM channel opened")
+            channel = rfcommChannel
+            isConnecting = false
+            channelOpenRetries = 0
+            channelEstablished = true
+            channelOpenGeneration += 1 // invalidate the pending watchdog
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
+            }
+            return
+        }
+
+        log.warning("RFCOMM channel open failed, IOReturn: \(String(format: "0x%08x", error)), attempt \(channelOpenRetries + 1)")
+        channel = nil
+        channelOpenGeneration += 1
+        handleChannelOpenFailure()
     }
 
     // Finds the RFCOMM channel of the Nothing control service via SDP.
@@ -395,7 +455,14 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     }
     
     func send(data: UnsafeMutableRawPointer!, length: UInt16) {
-        channel?.writeSync(data, length: length)
+        guard let channel = channel else {
+            log.warning("Attempted to write with no RFCOMM channel")
+            return
+        }
+        let result = channel.writeSync(data, length: length)
+        if result != kIOReturnSuccess {
+            log.warning("RFCOMM write failed, IOReturn: \(String(format: "0x%08x", result))")
+        }
     }
     
     func rfcommChannelData(_ rfcommChannel: IOBluetoothRFCOMMChannel!, data dataPointer: UnsafeMutableRawPointer!, length dataLength: Int) {
@@ -412,7 +479,11 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     
     
     func rfcommChannelClosed(_ channel: IOBluetoothRFCOMMChannel) {
+        // A channel that failed to open can also report a close — only an
+        // established channel closing should reset the UI
+        guard channelEstablished else { return }
         log.info("RFCOMM channel closed")
+        channelEstablished = false
         self.device = nil
         self.channel = nil
         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil)
