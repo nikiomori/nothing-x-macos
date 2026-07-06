@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import AppKit
 import IOBluetooth
 import CoreBluetooth
 
@@ -23,12 +24,79 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     private var centralManager: CBCentralManager!
     private var deviceClass: UInt32? = nil
     private var bluetoothState: BluetoothStates = .OFF
-    
+    private var lastConnectedAddress: String? = nil
+    private var lastConnectedChannelID: UInt8 = 15
+    private var reconnectAfterWake = false
+    private var isConnecting = false
+    private var systemConnectNotification: IOBluetoothUserNotification?
 
-    
+
+
     override init() {
         super.init()
         centralManager = CBCentralManager(delegate: self, queue: nil)
+
+        // Reconnect state is lost when the Mac sleeps: the RFCOMM channel dies
+        // but no delegate callback fires until wake, so track sleep explicitly.
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.handleSystemWillSleep()
+        }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.handleSystemDidWake()
+        }
+
+        systemConnectNotification = IOBluetoothDevice.register(forConnectNotifications: self, selector: #selector(systemDeviceConnected(_:device:)))
+    }
+
+    @objc private func systemDeviceConnected(_ notification: IOBluetoothUserNotification, device: IOBluetoothDevice) {
+        guard let address = device.addressString else { return }
+        log.debug("System-level device connection: \(device.name ?? address)")
+
+        let bluetoothDevice = BluetoothDeviceEntity(
+            name: device.name ?? "Unknown",
+            mac: address,
+            channelId: lastConnectedChannelID,
+            isPaired: device.isPaired(),
+            isConnected: true
+        )
+        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.SYSTEM_DEVICE_CONNECTED.rawValue), object: bluetoothDevice)
+    }
+
+    private func handleSystemWillSleep() {
+        guard channel != nil, let address = device?.addressString else { return }
+        log.info("System is going to sleep, closing connection to \(address)")
+        reconnectAfterWake = true
+        channel?.close()
+        channel = nil
+        if let device = self.device, device.isConnected() {
+            device.closeConnection()
+        }
+        device = nil
+    }
+
+    private func handleSystemDidWake() {
+        guard reconnectAfterWake, let address = lastConnectedAddress else { return }
+        log.info("System woke up, waiting for \(address) to come back")
+        attemptWakeReconnect(address: address, attemptsLeft: 10)
+    }
+
+    // The Bluetooth stack and the headphones both need a few seconds after wake,
+    // so poll the system connection state instead of connecting blindly.
+    // Devices that re-associate later are caught by the connect notification.
+    private func attemptWakeReconnect(address: String, attemptsLeft: Int) {
+        guard attemptsLeft > 0 else {
+            reconnectAfterWake = false
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak self] in
+            guard let self, self.reconnectAfterWake, self.channel == nil else { return }
+            if let device = IOBluetoothDevice(addressString: address), device.isConnected() {
+                self.reconnectAfterWake = false
+                self.connectToDevice(address: address, channelID: self.lastConnectedChannelID)
+            } else {
+                self.attemptWakeReconnect(address: address, attemptsLeft: attemptsLeft - 1)
+            }
+        }
     }
     
     
@@ -117,61 +185,74 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     
     
     func connectToDevice(address: String, channelID: UInt8) {
-        
-        
+
+
         stopDeviceInquiry()
-        
+
         DispatchQueue.global(qos: .userInitiated).async {
-                // Check if the device is already connected
                 self.log.info("Connecting to device \(address)")
-                if !(self.device?.isConnected() ?? false) {
-                    self.device = IOBluetoothDevice(addressString: address)
-                    
-                    // Open a connection to the device
-                    let resultConnection = self.device?.openConnection()
-                    if resultConnection == kIOReturnSuccess {
-                        self.log.info("Connected to device")
-                        let bluetoothDevice = BluetoothDeviceEntity(name: self.device!.name, mac: address, channelId: channelID, isPaired: true, isConnected: true)
-                        
-                        // Notify on the main thread
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.CONNECTED.rawValue), object: bluetoothDevice)
-                            
-                        }
-                    } else {
-                        self.log.error("Failed to connect to device")
-                        DispatchQueue.main.async {
-                            self.device = nil
-                            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil)
-                            
-                        }
-                        return
-                    }
-                    
-                    // Open an RFCOMM channel to the device
-                    
-                    let resultRFCOMM = self.device?.openRFCOMMChannelAsync(&self.channel, withChannelID: channelID, delegate: self)
-                    
-                    if resultRFCOMM == kIOReturnSuccess {
-                        self.log.info("Opened RFCOMM channel")
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
-                        }
-                    } else {
-                        self.log.error("Failed to open RFCOMM channel")
-                        self.device = nil
-                        DispatchQueue.main.async {
-                            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil)
-                        }
-                    }
-                } else {
+
+                guard !self.isConnecting else {
+                    self.log.info("Connection attempt already in progress, skipping")
+                    return
+                }
+                self.isConnecting = true
+                defer { self.isConnecting = false }
+
+                // Already connected with an open RFCOMM channel — nothing to do.
+                // The baseband link alone is not enough: after sleep the device can
+                // still report isConnected() while the RFCOMM channel is gone.
+                if (self.device?.isConnected() ?? false) && self.channel != nil {
                     DispatchQueue.main.async {
                         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
-                        
+                    }
+                    return
+                }
+
+                self.device = IOBluetoothDevice(addressString: address)
+
+                // Open a connection to the device (no-op if the link is already up)
+                let resultConnection = self.device?.openConnection()
+                if resultConnection == kIOReturnSuccess {
+                    self.log.info("Connected to device")
+                    let bluetoothDevice = BluetoothDeviceEntity(name: self.device!.name, mac: address, channelId: channelID, isPaired: true, isConnected: true)
+
+                    // Notify on the main thread
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.CONNECTED.rawValue), object: bluetoothDevice)
+
+                    }
+                } else {
+                    self.log.error("Failed to connect to device")
+                    DispatchQueue.main.async {
+                        self.device = nil
+                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_TO_CONNECT.rawValue), object: nil)
+
+                    }
+                    return
+                }
+
+                // Open an RFCOMM channel to the device
+
+                let resultRFCOMM = self.device?.openRFCOMMChannelAsync(&self.channel, withChannelID: channelID, delegate: self)
+
+                if resultRFCOMM == kIOReturnSuccess {
+                    self.log.info("Opened RFCOMM channel")
+                    self.lastConnectedAddress = address
+                    self.lastConnectedChannelID = channelID
+                    self.reconnectAfterWake = false
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil)
+                    }
+                } else {
+                    self.log.error("Failed to open RFCOMM channel")
+                    self.device = nil
+                    DispatchQueue.main.async {
+                        NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FAILED_RFCOMM_CHANNEL.rawValue), object: nil)
                     }
                 }
             }
-        
+
     }
     
     func send(data: UnsafeMutableRawPointer!, length: UInt16) {
@@ -199,6 +280,10 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     }
 
     func disconnectDevice() {
+        // Explicit disconnect — drop any pending auto-reconnect intent
+        lastConnectedAddress = nil
+        reconnectAfterWake = false
+
         if let channel = self.channel {
             channel.close() // This should trigger rfcommChannelClosed delegate method
             self.channel = nil // Ensure it's set to nil immediately

@@ -46,7 +46,9 @@ class NothingServiceImpl : NothingService {
     private var isProcessing = false
 
     private var nothingDevice: NothingDeviceFDTO? = nil
-    
+    // Suppresses auto-reconnect after the user disconnected on purpose
+    private var userInitiatedDisconnect = false
+
     private init() {
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CONNECTED.rawValue), object: nil, queue: .main) { notification in
@@ -106,15 +108,47 @@ class NothingServiceImpl : NothingService {
         
         
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.FOUND.rawValue), object: nil, queue: .main) { notification in
-            
+
            self.log.info("Found device")
             if let bluetoothDevice = notification.object as? BluetoothDeviceEntity {
-                
+
                 NotificationCenter.default.post(name: Notification.Name(DataNotifications.FOUND.rawValue), object: bluetoothDevice, userInfo: nil)
-                
+
             }
         }
-        
+
+        // A saved device connected at the system level (after wake, out of the
+        // case, back in range) — reattach the RFCOMM channel automatically
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.SYSTEM_DEVICE_CONNECTED.rawValue), object: nil, queue: .main) { notification in
+            guard let device = notification.object as? BluetoothDeviceEntity else { return }
+            guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+
+            let savedDevices = NothingRepositoryImpl.shared.getSaved()
+            guard savedDevices.contains(where: { $0.bluetoothDetails.mac == device.mac }) else { return }
+
+            self.log.info("Saved device appeared in system, reconnecting: \(device.name)")
+            self.connectToNothing(address: device.mac)
+        }
+
+        // Requests queued before a disconnect can never complete — drop them so
+        // they don't burn through retries against a dead channel after reconnect
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
+            self.flushRequestQueue()
+        }
+
+    }
+
+    private func flushRequestQueue() {
+        queueSemaphore.wait()
+        let dropped = requestQueue.count
+        requestQueue.removeAll()
+        currentRequest = nil
+        isProcessing = false
+        queueSemaphore.signal()
+
+        if dropped > 0 {
+            log.info("Dropped \(dropped) pending requests after channel close")
+        }
     }
     
 
@@ -350,10 +384,12 @@ class NothingServiceImpl : NothingService {
     }
     
     func connectToNothing(device: BluetoothDeviceEntity) {
+        userInitiatedDisconnect = false
         bluetoothManager.connectToDevice(address: device.mac, channelID: device.channelId)
     }
-    
+
     func disconnect() {
+        userInitiatedDisconnect = true
         bluetoothManager.disconnectDevice()
         self.nothingDevice = nil
     }
@@ -381,6 +417,7 @@ class NothingServiceImpl : NothingService {
     }
     
     func connectToNothing(address: String) {
+        userInitiatedDisconnect = false
         bluetoothManager.connectToDevice(address: address, channelID: 15)
     }
     
