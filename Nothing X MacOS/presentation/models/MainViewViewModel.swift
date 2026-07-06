@@ -101,8 +101,10 @@ class MainViewViewModel : ObservableObject {
 
                 self.jsonEncoder.addOrUpdateDevice(device.toDTO())
 
-                self.rightBattery = Double(device.rightBattery)
-                self.leftBattery = Double(device.leftBattery)
+                // Connected flags are only set once a battery report arrives —
+                // don't show a bogus 0% between connection and the first report
+                self.rightBattery = device.isRightConnected ? Double(device.rightBattery) : nil
+                self.leftBattery = device.isLeftConnected ? Double(device.leftBattery) : nil
             }
         })
 

@@ -33,6 +33,7 @@ class SettingsViewViewModel : ObservableObject {
     @Published var supportsPersonalizedANC = false
     @Published var supportsEarTipTest = false
     @Published var supportsCaseLED = false
+    @Published var isSingleUnit = false
 
     @Published var nothingDevice: NothingDeviceEntity?
 
@@ -66,6 +67,7 @@ class SettingsViewViewModel : ObservableObject {
                 self.supportsPersonalizedANC = caps.supportsPersonalizedANC
                 self.supportsEarTipTest = caps.supportsEarTipTest
                 self.supportsCaseLED = caps.supportsCaseLED
+                self.isSingleUnit = caps.isSingleUnit
 
                 self.nothingDevice = device
 

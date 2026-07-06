@@ -17,6 +17,8 @@ struct DeviceCapabilities {
     let supportsAdaptiveANC: Bool
     let supportsDoubleTap: Bool
     let supportsDoubleTapAndHold: Bool
+    // Over-ear and neckband devices: one unit, one battery, no case, no L/R split
+    let isSingleUnit: Bool
 
     static func capabilities(for codename: Codenames) -> DeviceCapabilities {
         switch codename {
@@ -30,7 +32,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: false,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         case .TWO: // B155 - Ear (2)
             return DeviceCapabilities(
@@ -42,7 +45,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         case .TWOS: // B171 - Nothing Ear (2024)
             return DeviceCapabilities(
@@ -54,7 +58,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .ESPEON: // B172 - CMF Buds Pro 2
             return DeviceCapabilities(
@@ -66,7 +71,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .DONPHAN: // B168 - CMF Buds
             return DeviceCapabilities(
@@ -78,7 +84,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .CLEFFA: // B162 - Nothing Ear (a)
             return DeviceCapabilities(
@@ -90,7 +97,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         case .CORSOLA: // B163 - CMF Buds Pro
             return DeviceCapabilities(
@@ -102,7 +110,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .STICKS: // B157 - Ear (stick)
             return DeviceCapabilities(
@@ -114,7 +123,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: false,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         case .FLAFFY: // B174 - Ear (open)
             return DeviceCapabilities(
@@ -126,7 +136,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: false,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         case .CROBAT: // B164 - CMF Neckband Pro
             return DeviceCapabilities(
@@ -138,7 +149,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: false,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: true
             )
         case .EAR3: // B173 - Ear (3)
             return DeviceCapabilities(
@@ -150,7 +162,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .GIRAFARIG: // B179 - CMF Buds 2
             return DeviceCapabilities(
@@ -162,7 +175,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .GLIGAR: // B184 - CMF Buds 2 Plus
             return DeviceCapabilities(
@@ -174,7 +188,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .HOOTHOOT: // B185 - CMF Buds 2a
             return DeviceCapabilities(
@@ -186,7 +201,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: false
             )
         case .ELEKID: // B170 - Nothing Headphone (1)
             return DeviceCapabilities(
@@ -198,7 +214,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: true
             )
         case .HEADPHONE_PRO: // B175 - CMF Headphone Pro (untested, mirrors Headphone (1))
             return DeviceCapabilities(
@@ -210,7 +227,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: true
             )
         case .HEADPHONE_A: // B186 - Nothing Headphone (a) (untested, advertises Adaptive ANC)
             return DeviceCapabilities(
@@ -222,7 +240,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: true,
                 supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
+                supportsDoubleTapAndHold: true,
+                isSingleUnit: true
             )
         case .UNKNOWN:
             return DeviceCapabilities(
@@ -234,7 +253,8 @@ struct DeviceCapabilities {
                 supportsANCCycleConfig: false,
                 supportsAdaptiveANC: false,
                 supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsDoubleTapAndHold: false,
+                isSingleUnit: false
             )
         }
     }

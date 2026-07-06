@@ -15,18 +15,27 @@ struct Nothing_X_MacOSApp: App {
     @StateObject private var budsPickerViewModel = BudsPickerComponentViewModel()
 
     private var batteryText: String {
-        guard let left = viewModel.leftBattery, let right = viewModel.rightBattery else {
+        let left = viewModel.leftBattery.map(Int.init)
+        let right = viewModel.rightBattery.map(Int.init)
+
+        // With one bud in the case or powered off only one side reports —
+        // show what's available instead of nothing
+        switch (left, right) {
+        case (nil, nil):
             return ""
-        }
-        let l = Int(left)
-        let r = Int(right)
-        switch store.batteryDisplayMode {
-        case .both:
-            return l == r ? "\(l)%" : "\(l)·\(r)%"
-        case .average:
-            return "\((l + r) / 2)%"
-        case .minimum:
-            return "\(min(l, r))%"
+        case (let l?, nil):
+            return "\(l)%"
+        case (nil, let r?):
+            return "\(r)%"
+        case (let l?, let r?):
+            switch store.batteryDisplayMode {
+            case .both:
+                return l == r ? "\(l)%" : "\(l)·\(r)%"
+            case .average:
+                return "\((l + r) / 2)%"
+            case .minimum:
+                return "\(min(l, r))%"
+            }
         }
     }
 

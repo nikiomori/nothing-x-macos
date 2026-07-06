@@ -130,14 +130,27 @@ class NothingServiceImpl : NothingService {
             let isNothing = codenameFromDeviceName(name: device.name) != .UNKNOWN
             guard isSaved || isNothing else { return }
 
-            self.log.info("Nothing device appeared in system, connecting: \(device.name)")
-            self.connectToNothing(address: device.mac)
+            // RFCOMM services come up a moment after the system-level
+            // connection — connecting immediately leaves the channel open hanging
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+                self.log.info("Nothing device appeared in system, connecting: \(device.name)")
+                self.connectToNothing(address: device.mac)
+            }
         }
 
         // Requests queued before a disconnect can never complete — drop them so
         // they don't burn through retries against a dead channel after reconnect
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
             self.flushRequestQueue()
+            self.stopBatteryRefresh()
+            self.attachToNextConnectedDevice()
+        }
+
+        // Devices don't always push battery updates — refresh periodically so
+        // a report lost during connection doesn't leave a stale value
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
+            self.startBatteryRefresh()
         }
 
         // CBCentralManager reports the power state a moment after launch, later
@@ -152,6 +165,67 @@ class NothingServiceImpl : NothingService {
             }
         }
 
+        // Freshly created view models ask for the current state: the menu bar
+        // popover recreates its views on every open and they would otherwise
+        // show defaults until the next device event
+        NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil, queue: .main) { _ in
+            if let device = self.nothingDevice {
+                NotificationCenter.default.post(name: Notification.Name(DataNotifications.DATA_UPDATED.rawValue), object: device)
+            }
+        }
+
+        // Standing self-heal: a device can refuse the control channel for a
+        // while (e.g. Nothing X on the phone holds it) and free it later, and
+        // one-shot attach attempts can misfire — keep trying while a Nothing
+        // device is connected to the system but the app has no channel
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            guard let self,
+                  !self.userInitiatedDisconnect,
+                  !self.bluetoothManager.isPreparingForSleep,
+                  !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Periodic reattach to connected device: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
+        }
+
+    }
+
+    // After a channel drop the user may have switched to another Nothing
+    // device (or the same one may come right back after a transient drop) —
+    // reattach without waiting for a manual reconnect. The delay lets the
+    // system connection state settle after the teardown.
+    private func attachToNextConnectedDevice() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            guard !self.userInitiatedDisconnect,
+                  !self.bluetoothManager.isPreparingForSleep,
+                  !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Attaching to connected device after channel close: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
+        }
+    }
+
+    private var batteryRefreshTimer: Timer?
+
+    private func startBatteryRefresh() {
+        batteryRefreshTimer?.invalidate()
+        batteryRefreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self, self.isNothingConnected() else { return }
+            self.addRequest(command: Commands.GET_BATTERY, operationID: Commands.GET_BATTERY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                if case .failure(let error) = result {
+                    self.log.debug("Periodic battery refresh failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func stopBatteryRefresh() {
+        batteryRefreshTimer?.invalidate()
+        batteryRefreshTimer = nil
     }
 
     private func flushRequestQueue() {
@@ -1105,26 +1179,47 @@ class NothingServiceImpl : NothingService {
     
     
     private func onDataReceived(rawData: [UInt8]) {
-        
-        
+
+
         var hexString = ""
         for byte in rawData {
             hexString += String(format: "%02x", byte)
         }
         log.debug("Received: \(hexString)")
-        
-        // Check if the first byte is 0x55 and if the length is at least 10
+
+        // A single RFCOMM read can carry several packets back to back (e.g.
+        // putting a bud into the case pushes a charging status followed by a
+        // battery report) — split by the payload length and process each one
+        var offset = 0
+        while offset + 8 <= rawData.count, rawData[offset] == 0x55 {
+            let payloadLength = Int(rawData[offset + 5])
+            let packetLength = 8 + payloadLength + 2 // header + payload + CRC
+            guard offset + packetLength <= rawData.count else { break }
+            processPacket(Array(rawData[offset..<(offset + packetLength)]))
+            offset += packetLength
+        }
+
+        if offset == 0 {
+            // No well-formed packet at the start — fall back to processing the
+            // buffer as a single packet like before
+            processPacket(rawData)
+        }
+    }
+
+    private func processPacket(_ rawData: [UInt8]) {
+
+        // Check if the first byte is 0x55 and if the length is at least 8
         guard rawData.count >= 8, rawData[0] == 0x55 else {
             log.warning("Invalid data: first byte is not 0x55 or data length < 8")
             return
         }
-        
-        
+
+
         let executedOperationID = rawData[7]
-        
+
         // Extract the header (first 6 bytes)
         let header = Array(rawData[0..<6])
-        
+
         // Get the command from the header
         let command = getCommand(header: header)
         
@@ -1192,19 +1287,23 @@ class NothingServiceImpl : NothingService {
             nothingDevice?.listeningMode = mode
             
         case Commands.READ_BATTERY_ONE.rawValue:
-            
+
             readBattery(hexString: rawData)
 
-            
+
         case Commands.READ_BATTERY_TWO.rawValue:
-            
+
             readBattery(hexString: rawData)
-            
-            
+
+
         case Commands.READ_BATTERY_THREE.rawValue:
-            
-            readBattery(hexString: rawData)
-            
+
+            // Not a battery-percentage report: 0xE002 carries per-unit
+            // charging/dock status flags (observed (0x89, 0x8C, 0x01) with
+            // a bud in the case) — parsing it as percentages corrupted the
+            // displayed levels. ear-web treats only 0xE001/0x4007 as battery.
+            log.debug("Charging status notification (0xE002), ignoring")
+
         case Commands.READ_LATENCY.rawValue:
             
             let latency = readLatencyMode(hexArray: rawData)

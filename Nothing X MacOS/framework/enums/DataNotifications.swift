@@ -18,6 +18,9 @@ enum DataNotifications : String {
     case DATA_UPDATED = "DATA_UPDATED"
     case REPOSITORY_DATA_UPDATED = "REPOSITORY_DATA_UPDATED"
     case EAR_TIP_TEST_RESULT = "EAR_TIP_TEST_RESULT"
+    // Posted by view models on creation to receive the current device state
+    // immediately instead of waiting for the next device event
+    case REQUEST_STATE = "REQUEST_STATE"
     
     
 }

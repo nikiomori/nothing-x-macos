@@ -18,6 +18,11 @@ class BatteryIndicatorViewViewModel : ObservableObject {
             
             if let device = notification.object as? NothingDeviceEntity {
 
+                let isSingleUnit = DeviceCapabilities.capabilities(for: device.codename).isSingleUnit
+                if self.isSingleUnit != isSingleUnit {
+                    self.isSingleUnit = isSingleUnit
+                }
+
                 if self.leftBattery != device.leftBattery {
                     self.leftBattery = device.leftBattery
                 }
@@ -68,15 +73,21 @@ class BatteryIndicatorViewViewModel : ObservableObject {
                     withAnimation {
                         self.isCaseConnected = device.isCaseConnected
                     }
-                    
+
                 }
-                
+
             }
         }
+
+        // The menu bar popover recreates this view model on every open —
+        // ask for the current state instead of showing defaults until the
+        // next device event
+        NotificationCenter.default.post(name: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil)
     }
         
     
     
+    @Published var isSingleUnit = false;
     @Published var leftBattery: Int = 0;
     @Published var rightBattery: Int = 0;
     @Published var caseBattery: Int = 0;
@@ -85,5 +96,5 @@ class BatteryIndicatorViewViewModel : ObservableObject {
     @Published var isCaseCharging = false;
     @Published var isLeftConnected = false;
     @Published var isRightConnected = false;
-    @Published var isCaseConnected = true;
+    @Published var isCaseConnected = false;
 }
