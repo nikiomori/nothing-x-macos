@@ -773,13 +773,6 @@ class NothingServiceImpl : NothingService {
             let isCharging = (batteryData & RECHARGING_MASK) == RECHARGING_MASK
 
             switch deviceId {
-            case 0x01: // Single-unit device (e.g. Headphone (1)) — one battery, no case
-                leftBattery = batteryLevel
-                isLeftCharging = isCharging
-                isLeftConnected = true
-                rightBattery = batteryLevel
-                isRightCharging = isCharging
-                isRightConnected = true
             case 0x02: // Left device
                 leftBattery = batteryLevel
                 isLeftCharging = isCharging
@@ -793,8 +786,16 @@ class NothingServiceImpl : NothingService {
                 isCaseCharging = isCharging
                 isCaseConnected = true
             default:
-                // Handle unknown device ID if necessary
-                break
+                // Single-unit devices report one battery for the whole unit
+                // under a different id (Headphone (1) uses 0x06)
+                if connectedDevices == 1 {
+                    leftBattery = batteryLevel
+                    isLeftCharging = isCharging
+                    isLeftConnected = true
+                    rightBattery = batteryLevel
+                    isRightCharging = isCharging
+                    isRightConnected = true
+                }
             }
         }
 
