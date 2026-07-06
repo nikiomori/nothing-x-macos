@@ -117,16 +117,20 @@ class NothingServiceImpl : NothingService {
             }
         }
 
-        // A saved device connected at the system level (after wake, out of the
-        // case, back in range) — reattach the RFCOMM channel automatically
+        // A Nothing device connected at the system level (after wake, out of
+        // the case, back in range) — reattach the RFCOMM channel automatically.
+        // Recognized-but-unsaved devices are picked up too, so a device paired
+        // through macOS settings gets set up on its first connection
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.SYSTEM_DEVICE_CONNECTED.rawValue), object: nil, queue: .main) { notification in
             guard let device = notification.object as? BluetoothDeviceEntity else { return }
             guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
 
             let savedDevices = NothingRepositoryImpl.shared.getSaved()
-            guard savedDevices.contains(where: { $0.bluetoothDetails.mac == device.mac }) else { return }
+            let isSaved = savedDevices.contains(where: { $0.bluetoothDetails.mac == device.mac })
+            let isNothing = codenameFromDeviceName(name: device.name) != .UNKNOWN
+            guard isSaved || isNothing else { return }
 
-            self.log.info("Saved device appeared in system, reconnecting: \(device.name)")
+            self.log.info("Nothing device appeared in system, connecting: \(device.name)")
             self.connectToNothing(address: device.mac)
         }
 
@@ -134,6 +138,18 @@ class NothingServiceImpl : NothingService {
         // they don't burn through retries against a dead channel after reconnect
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
             self.flushRequestQueue()
+        }
+
+        // CBCentralManager reports the power state a moment after launch, later
+        // than the UI's first bluetooth check — attach to whatever Nothing
+        // device the system already holds once Bluetooth is confirmed on
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.BLUETOOTH_ON.rawValue), object: nil, queue: .main) { _ in
+            guard !self.userInitiatedDisconnect, !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Bluetooth is on, attaching to connected device: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
         }
 
     }
@@ -420,12 +436,21 @@ class NothingServiceImpl : NothingService {
         userInitiatedDisconnect = false
         bluetoothManager.connectToDevice(address: address, channelID: 15)
     }
+
+    func isSystemConnected(address: String) -> Bool {
+        return bluetoothManager.isSystemConnected(address: address)
+    }
+
+    // A paired Nothing/CMF device macOS is connected to right now,
+    // whether or not it has been set up in the app
+    func systemConnectedNothingDevice() -> BluetoothDeviceEntity? {
+        return bluetoothManager.getPaired(withClass: Int(classOfNothing)).first(where: { $0.isConnected })
+    }
     
     func fetchData() {
         
         log.info("Fetching data...")
 
-        #warning("there is a change that device gets disconnected during transfer but it is low since it takes less than a second to fetch the data will fix it in the future")
         log.debug("Connected: \(isNothingConnected()), device exists: \(nothingDevice != nil)")
         
         if isNothingConnected() && nothingDevice != nil {

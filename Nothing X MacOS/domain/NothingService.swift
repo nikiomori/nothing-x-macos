@@ -28,10 +28,14 @@ protocol NothingService {
     func stopNothingDiscovery()
     
     func connectToNothing(device: BluetoothDeviceEntity)
-    
+
     func isNothingConnected() -> BluetoothDeviceEntity?
-    
+
     func isNothingConnected() -> Bool
+
+    func isSystemConnected(address: String) -> Bool
+
+    func systemConnectedNothingDevice() -> BluetoothDeviceEntity?
     
     func switchLowLatency(mode: Bool)
     
