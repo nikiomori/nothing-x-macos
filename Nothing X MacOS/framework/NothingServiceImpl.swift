@@ -597,8 +597,6 @@ class NothingServiceImpl : NothingService {
         }
     }
 
-    #warning("low latency mode switch is not implemented")
-    
     private func send(command: UInt16, operationID: UInt8, payload: [UInt8] = []) {
         var header: [UInt8] = [0x55, 0x60, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00]
         
@@ -1126,16 +1124,26 @@ class NothingServiceImpl : NothingService {
             if (!serial.isEmpty) {
                 nothingDevice?.serial = serial
                 let sku = skuFromSerial(serial: serial)
+                let nameCodename = codenameFromDeviceName(name: nothingDevice?.name ?? "")
                 if sku != .UNKNOWN {
-                    nothingDevice?.sku = sku
-                    nothingDevice?.codename = codenameFromSKU(sku: sku)
-                } else if nothingDevice?.codename == .UNKNOWN, let name = nothingDevice?.name {
-                    // Fallback: detect from device name
-                    let detected = codenameFromDeviceName(name: name)
-                    if detected != .UNKNOWN {
-                        nothingDevice?.codename = detected
-                        log.info("Codename detected from name fallback: \(detected)")
+                    var codename = codenameFromSKU(sku: sku)
+                    // The MA-prefix serial heuristic tells Ear (stick) and
+                    // Ear (open) apart only by production year — trust the
+                    // advertised device name when it disagrees
+                    if (codename == .STICKS || codename == .FLAFFY),
+                       nameCodename == .STICKS || nameCodename == .FLAFFY,
+                       nameCodename != codename {
+                        log.info("Serial heuristic said \(codename), device name says \(nameCodename) — using the name")
+                        codename = nameCodename
+                        nothingDevice?.sku = nameCodename == .FLAFFY ? .FLAFFY_WHITE : .EAR_STICK_1
+                    } else {
+                        nothingDevice?.sku = sku
                     }
+                    nothingDevice?.codename = codename
+                } else if nothingDevice?.codename == .UNKNOWN, nameCodename != .UNKNOWN {
+                    // Fallback: detect from device name
+                    nothingDevice?.codename = nameCodename
+                    log.info("Codename detected from name fallback: \(nameCodename)")
                 }
             }
 

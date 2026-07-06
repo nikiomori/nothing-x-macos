@@ -157,12 +157,14 @@ func skuFromSerial(serial: String) -> SKU {
     }
     
     if headSerial == "MA" {
+        // Year-based heuristic only — the READ_SERIAL_NUMBER handler
+        // cross-checks the result against the advertised device name
         let year = String(serial.prefix(8).suffix(2))
         if year == "22" || year == "23" {
             // Ear (stick)
             return SKU.EAR_STICK_1
-        } else if year == "24" {
-            // Ear (open) TODO: Find a better way to identify both
+        } else {
+            // Ear (open)
             return SKU.FLAFFY_WHITE
         }
     } else if headSerial == "SH" || headSerial == "13" {
