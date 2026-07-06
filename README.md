@@ -10,7 +10,9 @@ An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the N
 - Headphone (1)
 
 **CMF by Nothing**
+- Buds, Buds Pro, Buds Pro 2
 - Buds 2, Buds 2 Plus, Buds 2a
+- Neckband Pro
 
 ## Features
 

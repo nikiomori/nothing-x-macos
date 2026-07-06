@@ -44,7 +44,19 @@ struct DeviceCapabilities {
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
-        case .TWOS: // B171 - Ear (2024)
+        case .TWOS: // B171 - Nothing Ear (2024)
+            return DeviceCapabilities(
+                supportsCustomEQ: true,
+                supportsEnhancedBass: true,
+                supportsPersonalizedANC: true,
+                supportsEarTipTest: true,
+                supportsCaseLED: false,
+                supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
+                supportsDoubleTap: true,
+                supportsDoubleTapAndHold: true
+            )
+        case .ESPEON: // B172 - CMF Buds Pro 2
             return DeviceCapabilities(
                 supportsCustomEQ: true,
                 supportsEnhancedBass: true,
@@ -56,19 +68,7 @@ struct DeviceCapabilities {
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
-        case .ESPEON: // B172
-            return DeviceCapabilities(
-                supportsCustomEQ: true,
-                supportsEnhancedBass: true,
-                supportsPersonalizedANC: false,
-                supportsEarTipTest: true,
-                supportsCaseLED: false,
-                supportsANCCycleConfig: true,
-                supportsAdaptiveANC: true,
-                supportsDoubleTap: true,
-                supportsDoubleTapAndHold: true
-            )
-        case .DONPHAN: // B168
+        case .DONPHAN: // B168 - CMF Buds
             return DeviceCapabilities(
                 supportsCustomEQ: true,
                 supportsEnhancedBass: true,
@@ -80,7 +80,7 @@ struct DeviceCapabilities {
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
-        case .CLEFFA: // B162
+        case .CLEFFA: // B162 - Nothing Ear (a)
             return DeviceCapabilities(
                 supportsCustomEQ: true,
                 supportsEnhancedBass: true,
@@ -88,11 +88,11 @@ struct DeviceCapabilities {
                 supportsEarTipTest: true,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
-                supportsAdaptiveANC: false,
+                supportsAdaptiveANC: true,
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: false
             )
-        case .CORSOLA: // B163 - Ear (a)
+        case .CORSOLA: // B163 - CMF Buds Pro
             return DeviceCapabilities(
                 supportsCustomEQ: true,
                 supportsEnhancedBass: false,
@@ -100,9 +100,9 @@ struct DeviceCapabilities {
                 supportsEarTipTest: false,
                 supportsCaseLED: false,
                 supportsANCCycleConfig: true,
-                supportsAdaptiveANC: true,
-                supportsDoubleTap: false,
-                supportsDoubleTapAndHold: false
+                supportsAdaptiveANC: false,
+                supportsDoubleTap: true,
+                supportsDoubleTapAndHold: true
             )
         case .STICKS: // B157 - Ear (stick)
             return DeviceCapabilities(
@@ -128,7 +128,7 @@ struct DeviceCapabilities {
                 supportsDoubleTap: false,
                 supportsDoubleTapAndHold: false
             )
-        case .CROBAT: // B164
+        case .CROBAT: // B164 - CMF Neckband Pro
             return DeviceCapabilities(
                 supportsCustomEQ: true,
                 supportsEnhancedBass: false,
