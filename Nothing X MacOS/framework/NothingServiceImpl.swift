@@ -1170,26 +1170,47 @@ class NothingServiceImpl : NothingService {
     
     
     private func onDataReceived(rawData: [UInt8]) {
-        
-        
+
+
         var hexString = ""
         for byte in rawData {
             hexString += String(format: "%02x", byte)
         }
         log.debug("Received: \(hexString)")
-        
-        // Check if the first byte is 0x55 and if the length is at least 10
+
+        // A single RFCOMM read can carry several packets back to back (e.g.
+        // putting a bud into the case pushes a charging status followed by a
+        // battery report) — split by the payload length and process each one
+        var offset = 0
+        while offset + 8 <= rawData.count, rawData[offset] == 0x55 {
+            let payloadLength = Int(rawData[offset + 5])
+            let packetLength = 8 + payloadLength + 2 // header + payload + CRC
+            guard offset + packetLength <= rawData.count else { break }
+            processPacket(Array(rawData[offset..<(offset + packetLength)]))
+            offset += packetLength
+        }
+
+        if offset == 0 {
+            // No well-formed packet at the start — fall back to processing the
+            // buffer as a single packet like before
+            processPacket(rawData)
+        }
+    }
+
+    private func processPacket(_ rawData: [UInt8]) {
+
+        // Check if the first byte is 0x55 and if the length is at least 8
         guard rawData.count >= 8, rawData[0] == 0x55 else {
             log.warning("Invalid data: first byte is not 0x55 or data length < 8")
             return
         }
-        
-        
+
+
         let executedOperationID = rawData[7]
-        
+
         // Extract the header (first 6 bytes)
         let header = Array(rawData[0..<6])
-        
+
         // Get the command from the header
         let command = getCommand(header: header)
         
@@ -1257,19 +1278,23 @@ class NothingServiceImpl : NothingService {
             nothingDevice?.listeningMode = mode
             
         case Commands.READ_BATTERY_ONE.rawValue:
-            
+
             readBattery(hexString: rawData)
 
-            
+
         case Commands.READ_BATTERY_TWO.rawValue:
-            
+
             readBattery(hexString: rawData)
-            
-            
+
+
         case Commands.READ_BATTERY_THREE.rawValue:
-            
-            readBattery(hexString: rawData)
-            
+
+            // Not a battery-percentage report: 0xE002 carries per-unit
+            // charging/dock status flags (observed (0x89, 0x8C, 0x01) with
+            // a bud in the case) — parsing it as percentages corrupted the
+            // displayed levels. ear-web treats only 0xE001/0x4007 as battery.
+            log.debug("Charging status notification (0xE002), ignoring")
+
         case Commands.READ_LATENCY.rawValue:
             
             let latency = readLatencyMode(hexArray: rawData)
