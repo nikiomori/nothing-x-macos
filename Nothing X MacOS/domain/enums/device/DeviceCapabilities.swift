@@ -200,6 +200,30 @@ struct DeviceCapabilities {
                 supportsDoubleTap: true,
                 supportsDoubleTapAndHold: true
             )
+        case .HEADPHONE_PRO: // B175 - CMF Headphone Pro (untested, mirrors Headphone (1))
+            return DeviceCapabilities(
+                supportsCustomEQ: true,
+                supportsEnhancedBass: true,
+                supportsPersonalizedANC: false,
+                supportsEarTipTest: false,
+                supportsCaseLED: false,
+                supportsANCCycleConfig: true,
+                supportsAdaptiveANC: false,
+                supportsDoubleTap: true,
+                supportsDoubleTapAndHold: true
+            )
+        case .HEADPHONE_A: // B186 - Nothing Headphone (a) (untested, advertises Adaptive ANC)
+            return DeviceCapabilities(
+                supportsCustomEQ: true,
+                supportsEnhancedBass: true,
+                supportsPersonalizedANC: false,
+                supportsEarTipTest: false,
+                supportsCaseLED: false,
+                supportsANCCycleConfig: true,
+                supportsAdaptiveANC: true,
+                supportsDoubleTap: true,
+                supportsDoubleTapAndHold: true
+            )
         case .UNKNOWN:
             return DeviceCapabilities(
                 supportsCustomEQ: false,

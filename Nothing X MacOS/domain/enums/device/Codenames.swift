@@ -22,4 +22,6 @@ enum Codenames : String, Codable {
     case GLIGAR = "B184"    // CMF Buds 2 Plus
     case HOOTHOOT = "B185"  // CMF Buds 2a
     case ELEKID = "B170"    // Nothing Headphone (1)
+    case HEADPHONE_PRO = "B175" // CMF Headphone Pro (community codename unknown)
+    case HEADPHONE_A = "B186"   // Nothing Headphone (a) (community codename unknown)
 }

@@ -206,6 +206,10 @@ func codenameFromDeviceName(name: String) -> Codenames {
         return .CROBAT
     } else if lowered.contains("headphone (1)") || lowered.contains("headphone(1)") {
         return .ELEKID
+    } else if lowered.contains("headphone (a)") || lowered.contains("headphone(a)") {
+        return .HEADPHONE_A
+    } else if lowered.contains("headphone pro") {
+        return .HEADPHONE_PRO
     } else if lowered == "nothing ear" || lowered == "ear" {
         // Nothing Ear (2024) is marketed as just "Nothing Ear"
         return .TWOS
