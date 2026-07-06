@@ -740,6 +740,13 @@ class NothingServiceImpl : NothingService {
             let isCharging = (batteryData & RECHARGING_MASK) == RECHARGING_MASK
             
             switch deviceId {
+            case 0x01: // Single-unit device (e.g. Headphone (1)) — one battery, no case
+                nothingDevice?.leftBattery = batteryLevel
+                nothingDevice?.isLeftCharging = isCharging
+                nothingDevice?.isLeftConnected = true
+                nothingDevice?.rightBattery = batteryLevel
+                nothingDevice?.isRightCharging = isCharging
+                nothingDevice?.isRightConnected = true
             case 0x02: // Left device
                 nothingDevice?.leftBattery = batteryLevel
                 nothingDevice?.isLeftCharging = isCharging

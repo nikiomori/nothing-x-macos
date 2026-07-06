@@ -133,10 +133,25 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         return device?.isConnected() ?? false
     }
 
+    // Earbuds advertise the "Wearable Headset" minor class (0x240404), but
+    // over-ear devices like Headphone (1) advertise "Headphones" (0x240418),
+    // so an exact class match misses them. Accept any Audio/Video device
+    // whose name identifies it as a Nothing/CMF product.
+    private func isNothingAudioDevice(_ device: IOBluetoothDevice, exactClass: UInt32) -> Bool {
+        let cod = UInt32(device.classOfDevice)
+        if cod == exactClass { return true }
+
+        let hasAudioService = (cod & 0x200000) != 0
+        let isAudioVideoMajor = ((cod >> 8) & 0x1F) == 0x04
+        guard hasAudioService && isAudioVideoMajor else { return false }
+
+        return codenameFromDeviceName(name: device.name ?? "") != .UNKNOWN
+    }
+
     func getPaired(withClass: Int) -> [BluetoothDeviceEntity] {
         return IOBluetoothDevice.pairedDevices()
             .compactMap { $0 as? IOBluetoothDevice } // Safely unwrap and cast to IOBluetoothDevice
-            .filter { $0.classOfDevice == withClass } // Filter by the specified device class
+            .filter { self.isNothingAudioDevice($0, exactClass: UInt32(withClass)) }
             .map { device in
                 // Create an instance of BluetoothDevice
                 BluetoothDeviceEntity(
@@ -152,8 +167,11 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         
     func startDeviceInquiry(withClass: UInt32) {
         if deviceInquiry == nil {
-            
+
             deviceInquiry = IOBluetoothDeviceInquiry(delegate: self)
+            // Names are needed to recognize devices that don't match the exact
+            // device class (e.g. Headphone (1))
+            deviceInquiry?.updateNewDeviceNames = true
             deviceInquiry?.start()
             deviceClass = withClass
             log.info("Starting device inquiry")
@@ -170,16 +188,30 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     }
     
     func deviceInquiryDeviceFound(_ sender: IOBluetoothDeviceInquiry!, device: IOBluetoothDevice!) {
-        
+
         log.debug("Device found during inquiry")
-    
-        if (device.classOfDevice == deviceClass) {
-            
+
+        if let targetClass = deviceClass, isNothingAudioDevice(device, exactClass: targetClass) {
+
             let bluetoothDevice = BluetoothDeviceEntity(name: device.name, mac: device.addressString, channelId: 15, isPaired: false, isConnected: false)
-           
+
             NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FOUND.rawValue), object: bluetoothDevice)
         }
-        
+
+    }
+
+    func deviceInquiryDeviceNameUpdated(_ sender: IOBluetoothDeviceInquiry!, device: IOBluetoothDevice!, devicesRemaining: UInt32) {
+
+        // Devices recognized by name only can't match in deviceInquiryDeviceFound
+        // when the name arrives later; exact-class matches were already posted there
+        guard let targetClass = deviceClass, UInt32(device.classOfDevice) != targetClass else { return }
+
+        if isNothingAudioDevice(device, exactClass: targetClass) {
+            let bluetoothDevice = BluetoothDeviceEntity(name: device.name, mac: device.addressString, channelId: 15, isPaired: false, isConnected: false)
+
+            NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.FOUND.rawValue), object: bluetoothDevice)
+        }
+
     }
     
     
