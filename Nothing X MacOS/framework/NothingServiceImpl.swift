@@ -138,6 +138,14 @@ class NothingServiceImpl : NothingService {
         // they don't burn through retries against a dead channel after reconnect
         NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.CLOSED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
             self.flushRequestQueue()
+            self.stopBatteryRefresh()
+            self.attachToNextConnectedDevice()
+        }
+
+        // Devices don't always push battery updates — refresh periodically so
+        // a report lost during connection doesn't leave a stale value
+        NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { _ in
+            self.startBatteryRefresh()
         }
 
         // CBCentralManager reports the power state a moment after launch, later
@@ -152,6 +160,42 @@ class NothingServiceImpl : NothingService {
             }
         }
 
+    }
+
+    // After a channel drop the user may have switched to another Nothing
+    // device (or the same one may come right back after a transient drop) —
+    // reattach without waiting for a manual reconnect. The delay lets the
+    // system connection state settle after the teardown.
+    private func attachToNextConnectedDevice() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            guard !self.userInitiatedDisconnect,
+                  !self.bluetoothManager.isPreparingForSleep,
+                  !self.isNothingConnected() else { return }
+
+            if let connected = self.systemConnectedNothingDevice() {
+                self.log.info("Attaching to connected device after channel close: \(connected.name)")
+                self.connectToNothing(device: connected)
+            }
+        }
+    }
+
+    private var batteryRefreshTimer: Timer?
+
+    private func startBatteryRefresh() {
+        batteryRefreshTimer?.invalidate()
+        batteryRefreshTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self, self.isNothingConnected() else { return }
+            self.addRequest(command: Commands.GET_BATTERY, operationID: Commands.GET_BATTERY.firstEightBits, requestTimeout: 1000, responseTimeout: 1000, maxRetries: 0) { result in
+                if case .failure(let error) = result {
+                    self.log.debug("Periodic battery refresh failed: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
+    private func stopBatteryRefresh() {
+        batteryRefreshTimer?.invalidate()
+        batteryRefreshTimer = nil
     }
 
     private func flushRequestQueue() {

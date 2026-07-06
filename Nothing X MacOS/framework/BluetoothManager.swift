@@ -68,7 +68,12 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
         NotificationCenter.default.post(name: Notification.Name(BluetoothNotifications.SYSTEM_DEVICE_CONNECTED.rawValue), object: bluetoothDevice)
     }
 
+    // Lets the service layer distinguish a sleep-time channel close from a
+    // device switch or a transient drop
+    private(set) var isPreparingForSleep = false
+
     private func handleSystemWillSleep() {
+        isPreparingForSleep = true
         guard channel != nil, let address = device?.addressString else { return }
         log.info("System is going to sleep, closing connection to \(address)")
         reconnectAfterWake = true
@@ -81,6 +86,7 @@ class BluetoothManager: NSObject, IOBluetoothDeviceInquiryDelegate, IOBluetoothR
     }
 
     private func handleSystemDidWake() {
+        isPreparingForSleep = false
         guard reconnectAfterWake, let address = lastConnectedAddress else { return }
         log.info("System woke up, waiting for \(address) to come back")
         attemptWakeReconnect(address: address, attemptsLeft: 10)
