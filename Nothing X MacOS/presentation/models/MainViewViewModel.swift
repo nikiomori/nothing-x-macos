@@ -22,8 +22,9 @@ class MainViewViewModel : ObservableObject {
     
     @Published var rightBattery: Double? = nil
     @Published var leftBattery: Double? = nil
-    
+
     @Published var nothingDevice: NothingDeviceEntity?
+    @Published var isConnected = false
 
     @Published var eqProfiles: EQProfiles = .BALANCED
     @Published var navigationPath = NavigationPath()
@@ -52,6 +53,7 @@ class MainViewViewModel : ObservableObject {
             guard let self else { return }
             self.leftBattery = nil
             self.rightBattery = nil
+            self.isConnected = false
 
             withAnimation {
                 self.navigationPath = NavigationPath()
@@ -65,6 +67,7 @@ class MainViewViewModel : ObservableObject {
 
         observers.append(NotificationCenter.default.addObserver(forName: Notification.Name(BluetoothNotifications.OPENED_RFCOMM_CHANNEL.rawValue), object: nil, queue: .main) { [weak self] notification in
             guard let self else { return }
+            self.isConnected = true
             self.fetchDataUseCase.fetchData()
             self.navigationPath = NavigationPath()
             self.navigationPath.append(Destination.home)
@@ -87,6 +90,9 @@ class MainViewViewModel : ObservableObject {
 //            }
             if let device = notification.object as? NothingDeviceEntity {
                 self.nothingDevice = device
+                // Device data only flows over an open channel — covers channels
+                // opened before this observer was registered
+                self.isConnected = true
                 withAnimation {
                     self.eqProfiles = device.isAdvancedEQEnabled ? .CUSTOM : device.listeningMode
                     self.rightTripleTapAction = device.tripleTapGestureActionRight
@@ -101,10 +107,17 @@ class MainViewViewModel : ObservableObject {
 
                 self.jsonEncoder.addOrUpdateDevice(device.toDTO())
 
-                // Connected flags are only set once a battery report arrives —
-                // don't show a bogus 0% between connection and the first report
-                self.rightBattery = device.isRightConnected ? Double(device.rightBattery) : nil
-                self.leftBattery = device.isLeftConnected ? Double(device.leftBattery) : nil
+                if DeviceCapabilities.capabilities(for: device.codename).isSingleUnit {
+                    // Single-unit devices report their battery as leftBattery
+                    // without setting the per-bud connected flags
+                    self.leftBattery = Double(device.leftBattery)
+                    self.rightBattery = nil
+                } else {
+                    // Connected flags are only set once a battery report arrives —
+                    // don't show a bogus 0% between connection and the first report
+                    self.rightBattery = device.isRightConnected ? Double(device.rightBattery) : nil
+                    self.leftBattery = device.isLeftConnected ? Double(device.leftBattery) : nil
+                }
             }
         })
 

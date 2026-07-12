@@ -170,7 +170,12 @@ class NothingServiceImpl : NothingService {
         // show defaults until the next device event
         NotificationCenter.default.addObserver(forName: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil, queue: .main) { _ in
             if let device = self.nothingDevice {
-                NotificationCenter.default.post(name: Notification.Name(DataNotifications.DATA_UPDATED.rawValue), object: device)
+                // View models request state from their init, i.e. mid view-update.
+                // A main-thread post runs .main observers synchronously, so answer
+                // asynchronously or every observer publishes during the update.
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: Notification.Name(DataNotifications.DATA_UPDATED.rawValue), object: device)
+                }
             }
         }
 
@@ -475,6 +480,12 @@ class NothingServiceImpl : NothingService {
     
     func connectToNothing(device: BluetoothDeviceEntity) {
         userInitiatedDisconnect = false
+        // Switching devices: release the current channel first — the manager
+        // holds one connection and would otherwise leave the old channel open
+        if isNothingConnected(), nothingDevice?.bluetoothDetails.mac != device.mac {
+            bluetoothManager.disconnectDevice()
+            self.nothingDevice = nil
+        }
         bluetoothManager.connectToDevice(address: device.mac, channelID: device.channelId)
     }
 

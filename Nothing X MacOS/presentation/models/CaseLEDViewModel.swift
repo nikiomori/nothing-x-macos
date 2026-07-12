@@ -32,6 +32,10 @@ class CaseLEDViewModel: ObservableObject {
                 }
             }
         }
+
+        // Ask for the current state so a freshly created view model doesn't
+        // show defaults until the next device event
+        NotificationCenter.default.post(name: Notification.Name(DataNotifications.REQUEST_STATE.rawValue), object: nil)
     }
 
     deinit {
