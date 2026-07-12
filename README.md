@@ -37,24 +37,24 @@ The app lives in your menu bar as a quick panel (noise control, EQ presets, batt
 
 ## Screenshots
 
-<img src="assets/Dashboard.png" alt="Dashboard">
+<img src="docs/screenshots/Dashboard.png" alt="Dashboard">
 
 <table>
   <tr>
-    <td><img src="assets/Equaliser.png" alt="Equaliser"></td>
-    <td><img src="assets/Controls.png" alt="Controls"></td>
+    <td><img src="docs/screenshots/Equaliser.png" alt="Equaliser"></td>
+    <td><img src="docs/screenshots/Controls.png" alt="Controls"></td>
   </tr>
   <tr>
-    <td><img src="assets/FindMyBuds.png" alt="Find My Buds"></td>
-    <td><img src="assets/EarTipTest.png" alt="Ear Tip Fit Test"></td>
+    <td><img src="docs/screenshots/FindMyBuds.png" alt="Find My Buds"></td>
+    <td><img src="docs/screenshots/EarTipTest.png" alt="Ear Tip Fit Test"></td>
   </tr>
   <tr>
-    <td><img src="assets/MyDevices.png" alt="My Devices"></td>
-    <td><img src="assets/Settings.png" alt="Settings"></td>
+    <td><img src="docs/screenshots/MyDevices.png" alt="My Devices"></td>
+    <td><img src="docs/screenshots/Settings.png" alt="Settings"></td>
   </tr>
   <tr>
-    <td><img src="assets/Pairing.png" alt="Pairing"></td>
-    <td align="center"><img src="assets/QuickPanel.png" alt="Menu Bar Quick Panel" width="320"></td>
+    <td><img src="docs/screenshots/Pairing.png" alt="Pairing"></td>
+    <td align="center"><img src="docs/screenshots/QuickPanel.png" alt="Menu Bar Quick Panel" width="320"></td>
   </tr>
 </table>
 
