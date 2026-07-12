@@ -29,7 +29,7 @@ protocol NothingService {
     
     func connectToNothing(device: BluetoothDeviceEntity)
 
-    func isNothingConnected() -> BluetoothDeviceEntity?
+    func connectedNothingDevice() -> BluetoothDeviceEntity?
 
     func isNothingConnected() -> Bool
 
