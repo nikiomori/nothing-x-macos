@@ -2,6 +2,8 @@
 
 An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the Nothing X iOS app, built with SwiftUI and Core Bluetooth.
 
+The app lives in your menu bar as a quick panel (noise control, EQ presets, battery at a glance) and opens into a full window with a sidebar for everything else — dashboard, equalizer, gesture controls, device switching, and settings.
+
 ## Supported Devices
 
 **Nothing**
@@ -16,11 +18,13 @@ An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the N
 
 ## Features
 
-- **Noise Control** — ANC, Transparency, Off with customizable cycle modes
+- **Menu Bar Quick Panel** — Noise control, EQ presets, and battery without opening the app
+- **Noise Control** — ANC, Transparency, Off with adjustable levels and customizable cycle modes
 - **Equalizer** — Preset profiles (Balanced, More Bass, More Treble, Voice) and Custom EQ with Bass/Mid/Treble sliders
 - **EQ Presets** — Save, load, and manage custom equalizer configurations
 - **Enhanced Bass** — Adjustable bass boost (device-dependent)
-- **Gesture Controls** — Fully customizable Triple Tap, Double Tap, Tap & Hold, Double Tap & Hold actions per earbud
+- **Gesture Controls** — Fully customizable press and hold actions per earbud
+- **My Devices** — Switch between paired Nothing and CMF devices, pair new ones
 - **Find My Buds** — Ring left, right, or both earbuds
 - **Ear Tip Fit Test** — Measure ear tip seal quality
 - **Battery Display** — Real-time L/R/Case levels in the menu bar with configurable display mode (L·R, AVG, MIN)
@@ -33,18 +37,24 @@ An unofficial macOS companion app for Nothing and CMF earbuds. Inspired by the N
 
 ## Screenshots
 
+<img src="assets/Dashboard.png" alt="Dashboard">
+
 <table>
   <tr>
-    <td><img src="assets/NothingX.png" alt="Main View"></td>
     <td><img src="assets/Equaliser.png" alt="Equaliser"></td>
+    <td><img src="assets/Controls.png" alt="Controls"></td>
   </tr>
   <tr>
-    <td><img src="assets/Controls.png" alt="Controls"></td>
+    <td><img src="assets/FindMyBuds.png" alt="Find My Buds"></td>
     <td><img src="assets/EarTipTest.png" alt="Ear Tip Fit Test"></td>
   </tr>
   <tr>
+    <td><img src="assets/MyDevices.png" alt="My Devices"></td>
     <td><img src="assets/Settings.png" alt="Settings"></td>
-    <td><img src="assets/FindMyBuds.png" alt="Find My Buds"></td>
+  </tr>
+  <tr>
+    <td><img src="assets/Pairing.png" alt="Pairing"></td>
+    <td align="center"><img src="assets/QuickPanel.png" alt="Menu Bar Quick Panel" width="320"></td>
   </tr>
 </table>
 
