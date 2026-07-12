@@ -1,5 +1,7 @@
-# This workflow will build a Swift project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-swift
+# CI build for the macOS app.
+# This is an Xcode project (there is no Package.swift), so it is built with
+# xcodebuild. `swift build` / `swift test` only work for SwiftPM packages and
+# fail here with "error: could not find Package.swift".
 
 name: Swift
 
@@ -8,6 +10,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,7 +19,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build
-      run: swift build -v
-    - name: Run tests
-      run: swift test -v
+    - name: Build (unsigned)
+      run: |
+        xcodebuild build \
+          -project "Nothing X MacOS.xcodeproj" \
+          -target "Nothing X MacOS" \
+          -configuration Debug \
+          -sdk macosx \
+          CODE_SIGNING_ALLOWED=NO \
+          CODE_SIGNING_REQUIRED=NO \
+          CODE_SIGN_IDENTITY=""
