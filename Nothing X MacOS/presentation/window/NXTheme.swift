@@ -40,6 +40,8 @@ enum NX {
 
     // Accents
     static let red = Color(nx: 0xD71721)
+    /// Softer red for large selected surfaces (EQ presets, active band)
+    static let redSoft = Color(nx: 0xD64545)
     static let segmentOn = Color(nx: 0xE4E3E1)
     static let segmentOff = Color(nx: 0x232427)
 
@@ -118,7 +120,7 @@ extension MainViewViewModel {
         let left = leftBattery.map { String(Int($0)) } ?? "–"
         let right = rightBattery.map { String(Int($0)) } ?? "–"
         let box = nothingDevice?.isCaseConnected == true ? String(nothingDevice!.caseBattery) : "–"
-        return "L \(left) · R \(right) · CASE \(box)"
+        return "L \(left) · CASE \(box) · R \(right)"
     }
 }
 
@@ -204,6 +206,211 @@ struct NXSegmented<T: Hashable>: View {
     }
 }
 
+// MARK: - Noise mode picker
+
+/// Round icon buttons with a label underneath — fits long labels like
+/// TRANSPARENCY without squeezing them into equal segments
+struct NXNoiseModePicker: View {
+    @Binding var selection: NoiseControlOptions
+    var diameter: CGFloat = 50
+    var labelSize: CGFloat = 9
+    /// nil spreads the buttons across the available width
+    var spacing: CGFloat? = 32
+
+    var body: some View {
+        HStack(alignment: .top, spacing: spacing ?? 0) {
+            ForEach(NoiseControlOptions.allCases) { option in
+                let selected = option == selection
+                Button {
+                    selection = option
+                } label: {
+                    VStack(spacing: 8) {
+                        NXNoiseGlyph(option: option, color: selected ? NX.onCapsule : NX.offWhite)
+                            .frame(width: diameter * 0.4, height: diameter * 0.4)
+                            .frame(width: diameter, height: diameter)
+                            .background(Circle().fill(selected ? NX.capsule : NX.track))
+                        Text(option.nxLabel)
+                            .font(.system(size: labelSize))
+                            .tracking(1.2)
+                            .foregroundColor(selected ? NX.textPrimary : NX.textSecondary)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
+                    .frame(maxWidth: spacing == nil ? .infinity : nil)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .animation(.easeOut(duration: 0.18), value: selection)
+    }
+}
+
+extension NoiseControlOptions {
+    var nxLabel: String {
+        switch self {
+        case .anc: return "ANC"
+        case .transparency: return "TRANSPARENCY"
+        case .off: return "OFF"
+        }
+    }
+}
+
+/// Ring open at the bottom: with a dot (ANC), dotted with a dot
+/// (transparency) or struck through (off), after the official app
+struct NXNoiseGlyph: View {
+    let option: NoiseControlOptions
+    let color: Color
+
+    var body: some View {
+        Canvas { context, size in
+            let radius = min(size.width, size.height) / 2 - 1
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            // y grows downwards, so 90° is the bottom; leave 135°…45° open
+            func point(_ degrees: Double, _ r: CGFloat = radius) -> CGPoint {
+                let a = degrees * .pi / 180
+                return CGPoint(x: center.x + r * CGFloat(cos(a)), y: center.y + r * CGFloat(sin(a)))
+            }
+            let stroke = StrokeStyle(lineWidth: max(1.2, radius * 0.16), lineCap: .round)
+
+            if option == .transparency {
+                for index in 0...8 {
+                    let p = point(135 + Double(index) * 270 / 8)
+                    let d = radius * 0.2
+                    context.fill(Path(ellipseIn: CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d)), with: .color(color))
+                }
+            } else {
+                var arc = Path()
+                arc.move(to: point(135))
+                for step in 1...54 { arc.addLine(to: point(135 + Double(step) * 5)) }
+                context.stroke(arc, with: .color(color), style: stroke)
+            }
+
+            if option == .off {
+                var slash = Path()
+                slash.move(to: point(225, radius * 0.95))
+                slash.addLine(to: point(45, radius * 0.95))
+                context.stroke(slash, with: .color(color), style: stroke)
+            } else {
+                let d = radius * 0.42
+                context.fill(Path(ellipseIn: CGRect(x: center.x - d / 2, y: center.y - d / 2, width: d, height: d)), with: .color(color))
+            }
+        }
+    }
+}
+
+// MARK: - Tabs
+
+struct NXTabBar<T: Hashable>: View {
+    let tabs: [(value: T, label: String)]
+    @Binding var selection: T
+
+    var body: some View {
+        HStack(spacing: 28) {
+            ForEach(tabs, id: \.value) { tab in
+                let selected = tab.value == selection
+                Button {
+                    withAnimation(.easeInOut(duration: 0.15)) { selection = tab.value }
+                } label: {
+                    VStack(spacing: 10) {
+                        Text(tab.label)
+                            .font(.system(size: 11))
+                            .tracking(1.8)
+                            .foregroundColor(selected ? NX.textPrimary : NX.textTertiary)
+                        Rectangle()
+                            .fill(selected ? NX.textPrimary : .clear)
+                            .frame(height: 1.5)
+                    }
+                    .fixedSize()
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { NX.cardBorder.frame(height: 1) }
+    }
+}
+
+// MARK: - Vertical dot slider
+
+/// Vertical EQ fader: outlined track with dB marks and a knob. The
+/// selected band fills red from 0 to its value, like the official app
+struct NXDotSlider: View {
+    let label: String
+    @Binding var value: Double
+    var selected = false
+    var range: ClosedRange<Double> = -6...6
+    var step: Double = 0.5
+    var height: CGFloat = 180
+    var onSelect: () -> Void = {}
+    var onChange: () -> Void = {}
+
+    private let inset: CGFloat = 16
+    private let width: CGFloat = 32
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Text(String(format: "%+.1f", value))
+                .font(NX.pixel(10))
+                .foregroundColor(selected ? NX.textPrimary : NX.textSecondary)
+            GeometryReader { geo in
+                let x = geo.size.width / 2
+                let zero = y(for: 0, in: geo.size.height)
+                let knob = y(for: value, in: geo.size.height)
+                ZStack {
+                    Capsule()
+                        .fill(selected ? NX.track : Color.clear)
+                        .overlay(Capsule().stroke(selected ? Color.clear : NX.chipBorder))
+                        .frame(width: width)
+                    if selected {
+                        Capsule()
+                            .fill(NX.redSoft.opacity(0.45))
+                            .frame(width: 22, height: abs(knob - zero) + 22)
+                            .position(x: x, y: (knob + zero) / 2)
+                    }
+                    ForEach(0..<5, id: \.self) { index in
+                        let mark = range.lowerBound + Double(index) / 4 * (range.upperBound - range.lowerBound)
+                        Circle()
+                            .fill(NX.textFaint)
+                            .frame(width: 5, height: 5)
+                            .position(x: x, y: y(for: mark, in: geo.size.height))
+                    }
+                    Circle()
+                        .fill(selected ? NX.redSoft : NX.textPrimary)
+                        .frame(width: 22, height: 22)
+                        .position(x: x, y: knob)
+                }
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0).onChanged { drag in
+                        onSelect()
+                        let usable = geo.size.height - inset * 2
+                        let fraction = 1 - min(1, max(0, (drag.location.y - inset) / usable))
+                        let raw = range.lowerBound + fraction * (range.upperBound - range.lowerBound)
+                        let snapped = (raw / step).rounded() * step
+                        if snapped != value {
+                            value = snapped
+                            onChange()
+                        }
+                    }
+                )
+            }
+            .frame(width: 44, height: height)
+            Text(label)
+                .font(.system(size: 9))
+                .tracking(2)
+                .foregroundColor(selected ? NX.textPrimary : NX.textTertiary)
+        }
+        .animation(.easeOut(duration: 0.15), value: selected)
+    }
+
+    private func y(for value: Double, in height: CGFloat) -> CGFloat {
+        let fraction = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return inset + (1 - CGFloat(fraction)) * (height - inset * 2)
+    }
+}
+
 // MARK: - Switch
 
 struct NXSwitch: ToggleStyle {
@@ -214,19 +421,29 @@ struct NXSwitch: ToggleStyle {
                 .tracking(1)
                 .foregroundColor(NX.offWhite)
             Spacer()
-            Capsule()
-                .fill(configuration.isOn ? NX.capsule : NX.track)
-                .frame(width: 40, height: 22)
-                .overlay(alignment: configuration.isOn ? .trailing : .leading) {
-                    Circle()
-                        .fill(configuration.isOn ? NX.sidebar : Color(nx: 0x5A5A5C))
-                        .frame(width: 18, height: 18)
-                        .padding(2)
-                }
+            NXSwitchKnob(isOn: configuration.isOn)
                 .onTapGesture {
                     withAnimation(.bouncy(duration: 0.25)) { configuration.isOn.toggle() }
                 }
         }
+    }
+}
+
+/// The switch's look on its own, for places where a parent handles the tap
+struct NXSwitchKnob: View {
+    let isOn: Bool
+
+    var body: some View {
+        Capsule()
+            .fill(isOn ? NX.capsule : NX.track)
+            .frame(width: 40, height: 22)
+            .overlay(alignment: isOn ? .trailing : .leading) {
+                Circle()
+                    .fill(isOn ? NX.sidebar : Color(nx: 0x5A5A5C))
+                    .frame(width: 18, height: 18)
+                    .padding(2)
+            }
+            .animation(.bouncy(duration: 0.25), value: isOn)
     }
 }
 

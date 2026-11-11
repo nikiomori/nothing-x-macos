@@ -64,7 +64,8 @@ struct NXSettingsScreen: View {
                     isOn: Binding(
                         get: { viewModel.inEarSwitch },
                         set: { viewModel.inEarSwitch = $0; viewModel.switchInEarDetection(mode: $0) }
-                    )
+                    ),
+                    icon: "ear"
                 )
                 deviceToggle(
                     "LOW LAG MODE",
@@ -72,7 +73,8 @@ struct NXSettingsScreen: View {
                     isOn: Binding(
                         get: { viewModel.latencySwitch },
                         set: { viewModel.latencySwitch = $0; viewModel.switchLatency(mode: $0) }
-                    )
+                    ),
+                    icon: "gamecontroller"
                 )
                 if viewModel.supportsPersonalizedANC {
                     deviceToggle(
@@ -81,25 +83,19 @@ struct NXSettingsScreen: View {
                         isOn: Binding(
                             get: { viewModel.personalizedANCSwitch },
                             set: { viewModel.personalizedANCSwitch = $0; viewModel.switchPersonalizedANC(mode: $0) }
-                        )
+                        ),
+                        icon: "person.wave.2"
                     )
                 }
                 if viewModel.supportsCaseLED {
                     Button {
                         isEditingCaseLED = true
                     } label: {
-                        HStack {
-                            Text("CASE LED COLOR")
-                                .font(.system(size: 11, weight: .light))
-                                .tracking(1)
-                                .foregroundColor(NX.offWhite)
-                            Spacer()
-                            Image(systemName: "arrow.right")
-                                .font(.system(size: 12))
+                        settingsRow(icon: "lightbulb", title: "CASE LED COLOR") {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 11))
                                 .foregroundColor(NX.textSecondary)
                         }
-                        .padding(.vertical, 12)
-                        .overlay(alignment: .top) { NX.hairline.frame(height: 1) }
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -118,23 +114,40 @@ struct NXSettingsScreen: View {
         }
     }
 
-    private func deviceToggle(_ title: String, caption: String, isOn: Binding<Bool>) -> some View {
-        HStack(alignment: .top, spacing: 24) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title)
-                    .font(.system(size: 11, weight: .light))
-                    .tracking(1)
-                    .foregroundColor(NX.offWhite)
-                Text(caption)
-                    .font(.system(size: 10, weight: .light))
-                    .foregroundColor(NX.textTertiary)
-                    .frame(maxWidth: 300, alignment: .leading)
+    /// Card row with the switch; the caption sits under the card
+    private func deviceToggle(_ title: String, caption: String, isOn: Binding<Bool>, icon: String? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            settingsRow(icon: icon, title: title) {
+                Toggle("", isOn: isOn)
+                    .toggleStyle(NXSwitch())
+                    .labelsHidden()
             }
-            Spacer()
-            Toggle("", isOn: isOn)
-                .toggleStyle(NXSwitch())
-                .labelsHidden()
+            Text(caption)
+                .font(.system(size: 10, weight: .light))
+                .foregroundColor(NX.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
         }
+    }
+
+    private func settingsRow<Accessory: View>(icon: String?, title: String, color: Color = NX.offWhite, @ViewBuilder accessory: () -> Accessory) -> some View {
+        HStack(spacing: 14) {
+            if let icon {
+                Image(systemName: icon)
+                    .font(.system(size: 13, weight: .light))
+                    .foregroundColor(color)
+                    .frame(width: 18)
+            }
+            Text(title)
+                .font(.system(size: 11, weight: .light))
+                .tracking(1)
+                .foregroundColor(color)
+            Spacer()
+            accessory()
+        }
+        .padding(.horizontal, 18)
+        .frame(height: 50)
+        .nxCard()
     }
 
     // MARK: - Device details
@@ -143,19 +156,26 @@ struct NXSettingsScreen: View {
         VStack(alignment: .leading, spacing: 18) {
             sectionTitle("DEVICE DETAILS")
 
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 0) {
                 detailRow("DEVICE NAME", value: viewModel.name, mono: false)
+                Divider().overlay(NX.cardBorder)
                 detailRow("BLUETOOTH ADDRESS", value: viewModel.mac, mono: true)
+                Divider().overlay(NX.cardBorder)
                 detailRow("SERIAL NUMBER", value: viewModel.serial, mono: true)
+                Divider().overlay(NX.cardBorder)
                 detailRow("FIRMWARE VERSION", value: viewModel.firmware, mono: true)
             }
-            .padding(.vertical, 20)
-            .padding(.horizontal, 22)
+            .padding(.horizontal, 18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .nxCard()
 
-            Button("FORGET THIS DEVICE") { viewModel.shouldShowForgetDialog = true }
-                .buttonStyle(ForgetButton())
+            Spacer(minLength: 0)
+
+            Button { viewModel.shouldShowForgetDialog = true } label: {
+                settingsRow(icon: "xmark.circle", title: "FORGET THIS DEVICE", color: NX.red) { EmptyView() }
+                    .contentShape(Rectangle())
+            }
+                .buttonStyle(.plain)
                 .confirmationDialog("Forget this device?", isPresented: $viewModel.shouldShowForgetDialog) {
                     Button("Forget", role: .destructive) { viewModel.forgetDevice() }
                     Button("Cancel", role: .cancel) {}
@@ -163,19 +183,25 @@ struct NXSettingsScreen: View {
                     Text("The device will be removed from Nothing X. You can pair it again later.")
                 }
         }
-        .frame(width: 300)
+        .frame(width: 340)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private func detailRow(_ label: String, value: String, mono: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        HStack(spacing: 16) {
             Text(label)
                 .font(.system(size: 9))
                 .tracking(2)
                 .foregroundColor(NX.textTertiary)
+            Spacer()
             Text(value.isEmpty ? "–" : value)
                 .font(mono ? NX.pixel(11) : .system(size: 12, weight: .light))
                 .foregroundColor(.white.opacity(0.85))
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .textSelection(.enabled)
         }
+        .frame(height: 46)
     }
 
     private func sectionTitle(_ text: String) -> some View {
@@ -239,19 +265,5 @@ private struct CaseLEDSheet: View {
         .frame(width: 360)
         .background(Color.black)
         .preferredColorScheme(.dark)
-    }
-}
-
-private struct ForgetButton: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.system(size: 11))
-            .tracking(1.8)
-            .foregroundColor(NX.red)
-            .frame(maxWidth: .infinity)
-            .frame(height: 44)
-            .background(Capsule().stroke(Color(nx: 0x3A1214)))
-            .contentShape(Capsule())
-            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
