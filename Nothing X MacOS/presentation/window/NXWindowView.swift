@@ -22,6 +22,7 @@ enum NXSection: String, CaseIterable, Identifiable {
 struct NXWindowView: View {
     @EnvironmentObject var mainViewModel: MainViewViewModel
     @EnvironmentObject var store: Store
+    @Environment(\.openWindow) private var openWindow
     @State private var section: NXSection = .dashboard
 
     private var capabilities: DeviceCapabilities? {
@@ -54,6 +55,10 @@ struct NXWindowView: View {
         .frame(width: 1060, height: 700)
         .background(Color.black)
         .preferredColorScheme(.dark)
+        .onAppear {
+            // The connect card's panel sits outside the scene graph
+            NXConnectPopupController.shared.openMainWindow = { [openWindow] in openWindow(id: "nothing-x") }
+        }
         .onChange(of: mainViewModel.nothingDevice?.codename) { _ in
             // Switching devices can remove the current section from the nav
             if !sections.contains(section) && section != .devices {

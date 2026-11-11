@@ -11,6 +11,7 @@ struct NXSettingsScreen: View {
     @EnvironmentObject var store: Store
     @StateObject private var viewModel = SettingsViewViewModel(nothingService: NothingServiceImpl.shared, nothingRepository: NothingRepositoryImpl.shared)
     @State private var isEditingCaseLED = false
+    @AppStorage(NXConnectPopupController.enabledKey) private var connectPopupEnabled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
@@ -50,6 +51,12 @@ struct NXSettingsScreen: View {
                     .font(.system(size: 10, weight: .light))
                     .foregroundColor(NX.textTertiary)
             }
+
+            deviceToggle(
+                "CONNECTION POPUP",
+                caption: "Show battery levels when your device connects.",
+                isOn: $connectPopupEnabled
+            )
 
             Divider().overlay(NX.hairline)
 
