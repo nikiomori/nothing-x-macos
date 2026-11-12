@@ -119,6 +119,9 @@ final class NXConnectPopupController {
             // A new connection may have reopened the card meanwhile
             guard let self, self.state.generation == generation else { return }
             panel.orderOut(nil)
+            // Drop the content too: a hidden hosting view keeps running the
+            // card's repeat-forever animations (~13% CPU while idle)
+            panel.contentView = nil
         }
     }
 
