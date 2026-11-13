@@ -122,6 +122,10 @@ class MainViewViewModel : ObservableObject {
         })
 
 
+        // Registered after the observers above so battery values are
+        // already updated when the connect card reads them
+        NXConnectPopupController.shared.start(viewModel: self)
+
         // Check Bluetooth status and set the destination accordingly
         if !bluetoothService.isBluetoothOn() || !bluetoothService.isDeviceConnected() {
             let devices = nothingRepository.getSaved()

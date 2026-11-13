@@ -70,6 +70,9 @@ struct NXQuickPanel: View {
         }
         .padding(16)
         .frame(width: 280)
+        .onAppear {
+            NXConnectPopupController.shared.openMainWindow = { [openWindow] in openWindow(id: "nothing-x") }
+        }
         .background(Color.black)
         .preferredColorScheme(.dark)
         .onAppear {
