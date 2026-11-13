@@ -115,12 +115,24 @@ class EqualizerViewViewModel : ObservableObject {
         }
     }
 
+    /// Level used when enhanced bass is switched on without one: the
+    /// user's last pick, else 3 (the middle of 1…5)
+    private static let lastBassLevelKey = "enhancedBassLastLevel"
+    private var preferredBassLevel: Int {
+        let saved = UserDefaults.standard.integer(forKey: Self.lastBassLevelKey)
+        return (1...5).contains(saved) ? saved : 3
+    }
+
     func switchEnhancedBass(enabled: Bool) {
+        if enabled && !(1...5).contains(enhancedBassLevel) {
+            enhancedBassLevel = preferredBassLevel
+        }
         nothingService.switchEnhancedBass(enabled: enabled, level: enhancedBassLevel)
     }
 
     func setEnhancedBassLevel(level: Int) {
         enhancedBassLevel = level
+        UserDefaults.standard.set(level, forKey: Self.lastBassLevelKey)
         nothingService.switchEnhancedBass(enabled: isEnhancedBassEnabled, level: level)
     }
 

@@ -22,26 +22,25 @@ struct NXQuickPanel: View {
             header
 
             if mainViewModel.isConnected {
-                NXSegmented(
-                    options: [
-                        (NoiseControlOptions.anc, "ANC"),
-                        (.transparency, "TRANSP."),
-                        (.off, "OFF"),
-                    ],
+                NXNoiseModePicker(
                     selection: Binding(
                         get: { noiseVM.anc },
                         set: {
-                            noiseVM.anc = $0 // move the capsule before the device round-trip
+                            noiseVM.anc = $0 // select before the device round-trip
                             noiseVM.switchANC(anc: noiseVM.noiseControlOptionsToAnc(option: $0))
                         }
                     ),
-                    fontSize: 9
+                    diameter: 40,
+                    labelSize: 8,
+                    spacing: nil
                 )
-                .frame(height: 40)
+                .padding(.vertical, 4)
 
-                HStack(spacing: 6) {
+                // One row, 6pt gaps: each chip gets its label width plus an
+                // equal share of what's left
+                NXFillRow(spacing: 6) {
                     ForEach(eqPresets, id: \.self) { preset in
-                        Button(chipName(preset)) {
+                        Button(shortName(preset)) {
                             eqVM.eq = preset // select before the device round-trip
                             eqVM.switchEQ(eq: preset)
                         }
@@ -90,7 +89,7 @@ struct NXQuickPanel: View {
 
     private var eqPresets: [EQProfiles] { [.BALANCED, .MORE_BASE, .MORE_TREBEL, .VOICE] }
 
-    private func chipName(_ preset: EQProfiles) -> String {
+    private func shortName(_ preset: EQProfiles) -> String {
         switch preset {
         case .MORE_BASE: return "BASS"
         case .MORE_TREBEL: return "TREBLE"
@@ -132,7 +131,7 @@ struct NXQuickPanel: View {
         let left = mainViewModel.leftBattery.map { "\(Int($0))" } ?? "–"
         let right = mainViewModel.rightBattery.map { "\(Int($0))" } ?? "–"
         if let device = mainViewModel.nothingDevice, device.isCaseConnected {
-            return "\(left) · \(right) · \(device.caseBattery)"
+            return "\(left) · \(device.caseBattery) · \(right)"
         }
         return "\(left) · \(right)"
     }
@@ -193,12 +192,38 @@ private struct QuickChip: ButtonStyle {
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(.system(size: 9))
-            .tracking(0.8)
+            .font(.system(size: 8.5))
+            .tracking(0.6)
             .foregroundColor(selected ? NX.onCapsule : NX.offWhite)
+            .lineLimit(1)
+            .fixedSize()
+            .padding(.horizontal, 8)
             .frame(maxWidth: .infinity)
-            .frame(height: 30)
+            .frame(height: 28)
             .background(Capsule().fill(selected ? NX.capsule : NX.track))
             .contentShape(Capsule())
+    }
+}
+
+/// Lays children out in one row: ideal width each, leftover split evenly
+private struct NXFillRow: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let natural = ideals.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(subviews.count - 1, 0))
+        return CGSize(width: proposal.width ?? natural, height: ideals.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let ideals = subviews.map { $0.sizeThatFits(.unspecified) }
+        let natural = ideals.reduce(0) { $0 + $1.width } + spacing * CGFloat(max(subviews.count - 1, 0))
+        let extra = max(0, bounds.width - natural) / CGFloat(max(subviews.count, 1))
+        var x = bounds.minX
+        for (subview, ideal) in zip(subviews, ideals) {
+            let width = ideal.width + extra
+            subview.place(at: CGPoint(x: x, y: bounds.minY), proposal: ProposedViewSize(width: width, height: bounds.height))
+            x += width + spacing
+        }
     }
 }

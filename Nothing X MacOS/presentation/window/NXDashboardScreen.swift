@@ -2,7 +2,8 @@
 //  NXDashboardScreen.swift
 //  Nothing X MacOS
 //
-//  Window dashboard: hero, battery, noise control, EQ and quick settings.
+//  Window dashboard: hero, battery, noise control with shortcuts, and
+//  feature tiles.
 //
 
 import SwiftUI
@@ -21,12 +22,9 @@ struct NXDashboardScreen: View {
         VStack(alignment: .leading, spacing: 22) {
             hero
             batteryCard
-            noiseCard
-            HStack(spacing: 20) {
-                equalizerCard
-                quickSettingsCard
-            }
-            .frame(maxHeight: .infinity)
+            controlRow
+            featureTiles
+                .frame(maxHeight: .infinity)
         }
         .padding(.vertical, 36)
         .padding(.horizontal, 40)
@@ -56,7 +54,7 @@ struct NXDashboardScreen: View {
                     .foregroundColor(NX.textTertiary)
             }
             Spacer()
-            NXBudsImage(codename: device?.codename, height: 150)
+            NXBudsImage(codename: device?.codename, height: 130)
                 .padding(.trailing, 12)
         }
     }
@@ -74,9 +72,9 @@ struct NXDashboardScreen: View {
             } else {
                 batteryCell("LEFT", level: mainViewModel.leftBattery.map(Int.init), charging: device?.isLeftCharging == true)
                 Divider().overlay(NX.cardBorder)
-                batteryCell("RIGHT", level: mainViewModel.rightBattery.map(Int.init), charging: device?.isRightCharging == true)
-                Divider().overlay(NX.cardBorder)
                 batteryCell("CASE", level: device?.isCaseConnected == true ? device?.caseBattery : nil, charging: device?.isCaseCharging == true)
+                Divider().overlay(NX.cardBorder)
+                batteryCell("RIGHT", level: mainViewModel.rightBattery.map(Int.init), charging: device?.isRightCharging == true)
             }
         }
         .padding(.vertical, 20)
@@ -107,47 +105,71 @@ struct NXDashboardScreen: View {
 
     // MARK: - Noise control
 
-    private var noiseCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            NXSectionLabel("NOISE CONTROL")
-            HStack(spacing: 24) {
-                NXSegmented(
-                    options: [
-                        (NoiseControlOptions.anc, "ANC"),
-                        (.transparency, "TRANSPARENCY"),
-                        (.off, "OFF"),
-                    ],
-                    selection: Binding(
-                        get: { noiseVM.anc },
-                        set: {
-                            noiseVM.anc = $0 // move the capsule before the device round-trip
-                            noiseVM.switchANC(anc: noiseVM.noiseControlOptionsToAnc(option: $0))
-                        }
-                    )
-                )
-                .frame(width: 342, height: 46)
-
-                if noiseVM.anc == .anc {
-                    HStack(spacing: 8) {
-                        Text("LEVEL")
-                            .font(.system(size: 9))
-                            .tracking(2)
-                            .foregroundColor(NX.textTertiary)
-                            .padding(.trailing, 4)
-                        ForEach(ancLevels, id: \.self) { level in
-                            Button(level.displayName.uppercased()) {
-                                withAnimation { noiseVM.switchANC(anc: level) }
-                            }
-                            .buttonStyle(NXChip(selected: noiseVM.ancDetail == level))
-                        }
-                    }
-                    .transition(.opacity)
+    /// Noise control, Controls and Settings side by side at 2 : 1 : 1
+    private var controlRow: some View {
+        let showsControls = !isSingleUnit
+        return GeometryReader { geo in
+            let spacing: CGFloat = 16
+            let units: CGFloat = showsControls ? 4 : 3
+            let unit = (geo.size.width - spacing * (units - 2)) / units
+            HStack(spacing: spacing) {
+                noiseCard
+                    .frame(width: unit * 2)
+                if showsControls {
+                    shortcutTile("CONTROLS", status: "GESTURES", icon: "hand.tap", to: .controls)
+                        .frame(width: unit)
                 }
-                Spacer()
+                shortcutTile("SETTINGS", status: "DEVICE · APP", icon: "gearshape", to: .settings)
+                    .frame(width: unit)
             }
         }
-        .padding(.vertical, 20)
-        .padding(.horizontal, 26)
+        .frame(height: 170)
+    }
+
+    private func shortcutTile(_ title: String, status: String, icon: String, to target: NXSection) -> some View {
+        NXFeatureTile(title: title, status: status, action: {
+            withAnimation(.easeInOut(duration: 0.15)) { section = target }
+        }) {
+            Image(systemName: icon)
+                .font(.system(size: 15, weight: .light))
+                .foregroundColor(NX.offWhite)
+            Spacer()
+            Image(systemName: "arrow.right")
+                .font(.system(size: 11))
+                .foregroundColor(NX.textSecondary)
+        }
+    }
+
+    private var noiseCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            NXSectionLabel("NOISE CONTROL")
+            NXNoiseModePicker(
+                selection: Binding(
+                    get: { noiseVM.anc },
+                    set: {
+                        noiseVM.anc = $0 // select before the device round-trip
+                        noiseVM.switchANC(anc: noiseVM.noiseControlOptionsToAnc(option: $0))
+                    }
+                ),
+                spacing: nil
+            )
+            // Space stays reserved so the row doesn't jump when ANC toggles
+            HStack(spacing: 6) {
+                ForEach(ancLevels, id: \.self) { level in
+                    Button(level.displayName.uppercased()) {
+                        withAnimation { noiseVM.switchANC(anc: level) }
+                    }
+                    .buttonStyle(NXChip(selected: noiseVM.ancDetail == level))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .opacity(noiseVM.anc == .anc ? 1 : 0)
+            .allowsHitTesting(noiseVM.anc == .anc)
+            .animation(.easeOut(duration: 0.15), value: noiseVM.anc)
+        }
+        .padding(.vertical, 18)
+        .padding(.horizontal, 22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .nxCard()
     }
 
@@ -155,56 +177,75 @@ struct NXDashboardScreen: View {
         noiseVM.supportsAdaptiveANC ? ANC.levels + [.ADAPTIVE] : ANC.levels
     }
 
-    // MARK: - Equalizer
+    // MARK: - Feature tiles
 
-    private var equalizerCard: some View {
-        Button {
-            withAnimation(.easeInOut(duration: 0.15)) { section = .equaliser }
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    NXSectionLabel("EQUALISER")
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                        .font(.system(size: 12))
-                        .foregroundColor(NX.textSecondary)
-                }
-                Text(eqVM.eq.nxName)
-                    .font(NX.ndot(20))
-                    .tracking(1)
-                    .foregroundColor(NX.textPrimary)
-                EQCurveView(
-                    profile: eqVM.eq,
-                    customBass: eqVM.customBass,
-                    customMid: eqVM.customMid,
-                    customTreble: eqVM.customTreble
-                )
-                Spacer(minLength: 0)
+    private var featureTiles: some View {
+        HStack(spacing: 16) {
+            NXFeatureTile(title: "EQUALISER", status: eqVM.eq.nxName, action: {
+                withAnimation(.easeInOut(duration: 0.15)) { section = .equaliser }
+            }) {
+                Image(systemName: "slider.vertical.3")
+                    .font(.system(size: 15, weight: .light))
+                    .foregroundColor(NX.offWhite)
+                Spacer()
+                Image(systemName: "arrow.right")
+                    .font(.system(size: 11))
+                    .foregroundColor(NX.textSecondary)
             }
-            .padding(.vertical, 20)
-            .padding(.horizontal, 26)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .nxCard()
-            .contentShape(RoundedRectangle(cornerRadius: 14))
+
+            if eqVM.supportsEnhancedBass {
+                NXFeatureTile(
+                    title: "ENHANCED BASS",
+                    status: eqVM.isEnhancedBassEnabled ? "LEVEL \(eqVM.enhancedBassLevel)" : "OFF",
+                    action: { enhancedBassBinding.wrappedValue.toggle() }
+                ) {
+                    NXSwitchKnob(isOn: eqVM.isEnhancedBassEnabled)
+                    Spacer()
+                    // Level bars double as the level picker
+                    HStack(spacing: 2) {
+                        ForEach(1...5, id: \.self) { level in
+                            Button {
+                                if !eqVM.isEnhancedBassEnabled { enhancedBassBinding.wrappedValue = true }
+                                eqVM.setEnhancedBassLevel(level: level)
+                            } label: {
+                                Capsule()
+                                    .fill(eqVM.isEnhancedBassEnabled && level <= eqVM.enhancedBassLevel ? NX.segmentOn : NX.segmentOff)
+                                    .frame(width: 3, height: 6 + CGFloat(level) * 2)
+                                    .frame(width: 9, height: 20, alignment: .bottom)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .help("Level \(level)")
+                        }
+                    }
+                }
+            }
+
+            NXFeatureTile(
+                title: settingsVM.isSingleUnit ? "WEAR DETECTION" : "IN-EAR DETECTION",
+                status: settingsVM.inEarSwitch ? "ON" : "OFF",
+                action: { inEarBinding.wrappedValue.toggle() }
+            ) {
+                NXSwitchKnob(isOn: settingsVM.inEarSwitch)
+                Spacer()
+            }
+
+            NXFeatureTile(
+                title: "LOW LAG MODE",
+                status: settingsVM.latencySwitch ? "ON" : "OFF",
+                action: { lowLagBinding.wrappedValue.toggle() }
+            ) {
+                NXSwitchKnob(isOn: settingsVM.latencySwitch)
+                Spacer()
+            }
         }
-        .buttonStyle(.plain)
     }
 
-    // MARK: - Quick settings
-
-    private var quickSettingsCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            NXSectionLabel("QUICK SETTINGS")
-            Toggle(settingsVM.isSingleUnit ? "WEAR DETECTION" : "IN-EAR DETECTION", isOn: inEarBinding)
-                .toggleStyle(NXSwitch())
-            Toggle("LOW LAG MODE", isOn: lowLagBinding)
-                .toggleStyle(NXSwitch())
-            Spacer(minLength: 0)
-        }
-        .padding(.vertical, 20)
-        .padding(.horizontal, 26)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .nxCard()
+    private var enhancedBassBinding: Binding<Bool> {
+        Binding(
+            get: { eqVM.isEnhancedBassEnabled },
+            set: { eqVM.isEnhancedBassEnabled = $0; eqVM.switchEnhancedBass(enabled: $0) }
+        )
     }
 
     private var inEarBinding: Binding<Bool> {
@@ -219,5 +260,38 @@ struct NXDashboardScreen: View {
             get: { settingsVM.latencySwitch },
             set: { settingsVM.latencySwitch = $0; settingsVM.switchLatency(mode: $0) }
         )
+    }
+}
+
+/// Title, status line and a bottom accessory; the whole tile is the button
+private struct NXFeatureTile<Accessory: View>: View {
+    let title: String
+    let status: String
+    let action: () -> Void
+    @ViewBuilder let accessory: () -> Accessory
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.system(size: 10))
+                .tracking(1.4)
+                .foregroundColor(NX.offWhite)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(status)
+                .font(NX.pixel(11))
+                .foregroundColor(NX.textTertiary)
+                .lineLimit(1)
+            Spacer(minLength: 12)
+            HStack(spacing: 0) { accessory() }
+        }
+        .padding(.vertical, 18)
+        .padding(.horizontal, 20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .nxCard()
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        // A tap gesture, not a Button, so buttons inside the accessory
+        // (enhanced bass levels) still get their own clicks
+        .onTapGesture(perform: action)
     }
 }
